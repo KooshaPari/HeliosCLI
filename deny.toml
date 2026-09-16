@@ -26,8 +26,8 @@ allow = [
 [sources]
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 unknown-git = "deny"
-# kla (harness_recorder) pins phenotype rich-cli-kit for the recording summary panel.
-allow-git = ["https://github.com/KooshaPari/rich-cli-kit"]
+# rich-cli-kit removed (repo deleted); replaced by vendored rck-core.
+allow-git = []
 
 [advisories]
 version = 2
@@ -38,6 +38,12 @@ ignore = [
     { id = "RUSTSEC-2026-0184", reason = "git2 0.20 via harness_checkpoint; upgrade to 0.21 pending workspace resolve" },
     { id = "RUSTSEC-2024-0436", reason = "paste via pulp/exr/image/kla; no safe upgrade in-tree" },
     { id = "RUSTSEC-2017-0008", reason = "serial via portable-pty/kla; no safe upgrade in-tree" },
+    # atty is unmaintained and unsound; transitive via clap/indicatif. No patched version.
+    { id = "RUSTSEC-2021-0145", reason = "atty unsound; transitive via clap/indicatif; no patched version, replacement is std::io::IsTerminal" },
+    { id = "RUSTSEC-2024-0375", reason = "atty unmaintained; transitive via clap/indicatif; no patched version" },
+    # rustls 0.23.43 has a low-severity TLS 1.3 handshake edge case (CVSS 5.3).
+    # Fix requires >=0.23.45; blocked by hyper-rustls 0.27.x / tokio-rustls 0.26.x version pins.
+    { id = "RUSTSEC-2026-0285", reason = "rustls 0.23.43 via hyper-rustls/tokio-rustls; bump to >=0.23.45 blocked by upstream version pins" },
 ]
 
 [bans]

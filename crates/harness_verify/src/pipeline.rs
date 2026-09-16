@@ -7,7 +7,7 @@ use crate::error::Result;
 use crate::gates::{run_gates, GateConfig};
 use crate::result::VerificationResult;
 use crate::runners::run_cargo_test;
-use crate::utils::{extract_benchmark_time, has_shell_metacharacters, parse_duration_to_ns, which_scanner};
+use crate::rules::{run_custom_rule, run_performance_rule, run_security_rule};
 use harness_spec::models::{Specification, VerificationRule};
 use tracing::{debug, instrument};
 
