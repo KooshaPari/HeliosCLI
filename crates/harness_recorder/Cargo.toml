@@ -43,7 +43,7 @@ vt100 = "0.15"
 
 # Phenotype-org shared terminal-UX toolkit. Used for the end-of-run recording
 # summary panel; degrades to plain ASCII on non-kitty terminals / non-TTY / CI.
-rck-core = { git = "https://github.com/KooshaPari/rich-cli-kit", rev = "4db13bcd7ab1ed1c8113cf755178da418ae6a519" }
+rck-core = { path = "../rck-core" }
 
 # Timing and async utilities
 futures = "0.3"
