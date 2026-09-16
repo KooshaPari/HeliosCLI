@@ -3,6 +3,7 @@
 use super::session::ChatSession;
 use super::types::*;
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use std::path::{Path, PathBuf};
 use tracing::{debug, info};
