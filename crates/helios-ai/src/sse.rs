@@ -1,6 +1,6 @@
 //! Server-Sent Events parsing for streaming responses.
 
-use super::types::{Delta, StreamChunk};
+use super::types::StreamChunk;
 
 /// An event parsed from an SSE line.
 #[derive(Debug)]
