@@ -5,6 +5,13 @@ All notable changes to **HeliosCLI** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.3](https://github.com/KooshaPari/HeliosCLI/compare/v0.10.2...v0.10.3) (2026-09-16)
+
+
+### Bug Fixes
+
+* **mergify:** migrate commit_message_template to commit_message_format ([0e3f2c6](https://github.com/KooshaPari/HeliosCLI/commit/0e3f2c6a1d17cb7caad071fa7908618100e0a349))
+
 ## [0.10.2](https://github.com/KooshaPari/helios-cli/compare/v0.10.1...v0.10.2) (2026-09-08)
 
 
