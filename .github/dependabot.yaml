@@ -9,6 +9,12 @@ updates:
     cooldown:
       default-days: 7
   - package-ecosystem: cargo
+    directory: .
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+  - package-ecosystem: cargo
     directories:
       - codex-rs
       - codex-rs/*
@@ -30,6 +36,18 @@ updates:
       default-days: 7
   - package-ecosystem: github-actions
     directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+  - package-ecosystem: npm
+    directory: ui
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+  - package-ecosystem: npm
+    directory: ValidationKit/typescript/guardis
     schedule:
       interval: weekly
     cooldown:
