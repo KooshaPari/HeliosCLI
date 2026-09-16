@@ -3,7 +3,7 @@
 
 //! `run` subcommand handler.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::PathBuf;
 
 /// Run a command through the harness runner

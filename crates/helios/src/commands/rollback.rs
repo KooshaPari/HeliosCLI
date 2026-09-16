@@ -3,7 +3,7 @@
 
 //! `rollback` subcommand handler.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::PathBuf;
 
 /// Rollback to a checkpoint

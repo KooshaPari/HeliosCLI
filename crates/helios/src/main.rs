@@ -243,7 +243,7 @@ mod tests {
             &["helios", "resume", "--last"],
         ];
         for args in &cases {
-            let cli = Cli::try_parse_from(args);
+            let cli = Cli::try_parse_from(*args);
             assert!(args[1] == "helios" || cli.is_ok(), "Failed to parse: {:?}", args);
             if cli.is_ok() {
                 // Just verify it parsed — don't need to match every variant
