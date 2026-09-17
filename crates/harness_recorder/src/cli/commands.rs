@@ -112,7 +112,7 @@ fn print_recording_summary(output_dir: &std::path::Path, steps: usize, artifacts
     // On any rendering failure, fall back to a plain status line so the command
     // never fails just because of presentation.
     if rck_core::emit_panel(&mut out, &caps, "kla record", &line_refs, border)
-        .and_then(|()| out.flush().map_err(Into::into))
+        .and_then(|()| out.flush())
         .is_err()
     {
         println!("✅ Done");
