@@ -20,7 +20,7 @@ use codex_protocol::mcp_approval_meta::TOOL_PARAMS_KEY as MCP_ELICITATION_TOOL_P
 use codex_protocol::mcp_approval_meta::TOOL_TITLE_KEY as MCP_ELICITATION_TOOL_TITLE_KEY;
 use codex_rmcp_client::Elicitation;
 use rmcp::model::ElicitationAction;
-use rmcp::model::Meta;
+
 use serde_json::Map;
 
 const MCP_ELICITATION_DECLINE_MESSAGE_KEY: &str = "message";
@@ -640,6 +640,7 @@ fn guardian_elicitation_review_request(
             };
         }
         Elicitation::OpenAiForm { .. } => return GuardianElicitationReview::NotRequested,
+        _ => return GuardianElicitationReview::NotRequested,
     };
 
     let Some(meta) = meta.as_ref().map(|meta| &meta.0) else {
@@ -708,7 +709,7 @@ fn elicitation_connector_id(elicitation: &Elicitation) -> Option<&str> {
         .and_then(|meta| metadata_str(meta, MCP_ELICITATION_CONNECTOR_ID_KEY))
 }
 
-fn meta_requests_approval_request(meta: &Option<Meta>) -> bool {
+fn meta_requests_approval_request(meta: &Option<rmcp::model::RequestMetaObject>) -> bool {
     meta.as_ref()
         .and_then(|meta| metadata_str(&meta.0, MCP_ELICITATION_REQUEST_TYPE_KEY))
         == Some(MCP_ELICITATION_REQUEST_TYPE_APPROVAL_REQUEST)

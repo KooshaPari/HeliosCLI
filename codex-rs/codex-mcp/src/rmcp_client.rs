@@ -847,7 +847,11 @@ async fn start_server_task(
         fetch_start.elapsed(),
         &[],
     );
-    let server_info = mcp_server_info_from_implementation(initialize_result.server_info);
+    let server_info = mcp_server_info_from_implementation(
+        initialize_result
+            .server_info
+            .expect("server_info should always be present"),
+    );
     let tools = match (codex_apps_tools_cache_context.as_ref(), fetch_ticket) {
         (Some(cache_context), Some(fetch_ticket)) => {
             cache_context.publish_if_newest_accepted(fetch_ticket, &server_info, tools)

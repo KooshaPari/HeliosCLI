@@ -247,6 +247,11 @@ impl ElicitationRequestManager {
                         message,
                         requested_schema,
                     },
+                    _ => {
+                        return Err(anyhow::anyhow!(
+                            "unsupported MCP elicitation variant"
+                        ));
+                    }
                 };
                 let (tx, rx) = oneshot::channel();
                 {
@@ -296,5 +301,6 @@ fn can_auto_accept_elicitation(elicitation: &Elicitation) -> bool {
             ..
         })
         | Elicitation::OpenAiForm { .. } => false,
+        _ => false,
     }
 }
