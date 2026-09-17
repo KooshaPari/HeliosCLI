@@ -377,7 +377,10 @@ mod tests {
             Some(libc::c_int::MAX)
         );
         assert_eq!(landlock_fd_from_syscall_result(-1), None);
-        assert_eq!(landlock_fd_from_syscall_result(libc::c_int::MAX as libc::c_long + 1), None);
+        assert_eq!(
+            landlock_fd_from_syscall_result(libc::c_int::MAX.wrapping_add(1) as libc::c_long),
+            None
+        );
     }
 
     /// Calling `enable_sandbox` multiple times is idempotent and safe.

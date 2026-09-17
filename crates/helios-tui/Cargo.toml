@@ -8,8 +8,8 @@ repository = "https://github.com/KooshaPari/HeliosCLI"
 authors = ["kooshapari"]
 
 [dependencies]
-ratatui = "0.29"
-crossterm = "0.28"
+ratatui = "0.30"
+crossterm = "0.29"
 thiserror = "1"
 tracing = "0.1"
 
