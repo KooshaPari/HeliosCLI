@@ -5,6 +5,8 @@ use rama_core::Layer;
 use rama_core::Service;
 use rama_core::error::BoxError;
 use rama_core::error::ErrorExt as _;
+use rama_core::error::OpaqueError;
+use rama_core::extensions::ExtensionsMut;
 use rama_core::extensions::ExtensionsRef;
 use rama_core::service::BoxService;
 use rama_http::Body;
@@ -16,8 +18,8 @@ use rama_http_backend::client::HttpConnector;
 use rama_http_backend::client::proxy::layer::HttpProxyConnectorLayer;
 use rama_net::address::ProxyAddress;
 use rama_net::client::EstablishedClientConnection;
-use rama_net::input_ext::AuthorityInputExt;
-use rama_tls_rustls::client::TlsConnectorData;
+use rama_net::http::RequestContext;
+use rama_tls_rustls::client::TlsConnectorDataBuilder;
 use rama_tls_rustls::client::TlsConnectorLayer;
 use rama_tls_rustls::client::client_root_certs;
 use rama_tls_rustls::dep::rustls;
@@ -165,15 +167,10 @@ impl Service<Request<Body>> for UpstreamClient {
     type Error = OpaqueError;
 
     async fn serve(&self, mut req: Request<Body>) -> Result<Self::Output, Self::Error> {
-        let request_context = None;
-        let authority = req
-            .extensions()
-            .get::<rama_net::address::HostWithPort>()
-            .map(|h| h.to_string())
-            .or_else(|| {
-                use rama_net::input_ext::UriInputExt;
-                req.uri().host().map(|h| h.to_string())
-            })
+        let request_context = RequestContext::try_from(&req).ok();
+        let authority = request_context
+            .as_ref()
+            .map(|ctx| ctx.host_with_port().to_string())
             .unwrap_or_else(|| "<unknown>".to_string());
         let proxy = self.proxy_config.proxy_for_protocol(
             request_context
@@ -189,7 +186,7 @@ impl Service<Request<Body>> for UpstreamClient {
             None => info!("HTTP upstream route selected (target={authority}, route=direct)"),
         }
         if let Some(proxy) = proxy {
-            req.extensions().insert(proxy);
+            req.extensions_mut().insert(proxy);
         }
 
         let uri = req.uri().clone();
@@ -210,11 +207,11 @@ impl Service<Request<Body>> for UpstreamClient {
                     "HTTP upstream connection failed (target={authority}, elapsed_ms={})",
                     connect_started_at.elapsed().as_millis()
                 );
-                return Err(err);
+                return Err(OpaqueError::from_boxed(err));
             }
         };
 
-        req.extensions()
+        req.extensions_mut()
             .extend(http_connection.extensions().clone());
 
         let request_started_at = Instant::now();

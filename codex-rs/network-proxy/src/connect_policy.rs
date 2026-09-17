@@ -3,10 +3,11 @@ use crate::state::NetworkProxyState;
 use rama_core::Service;
 use rama_core::error::BoxError;
 use rama_core::error::ErrorExt as _;
-use rama_core::extensions::ExtensionsRef;
+use rama_core::error::OpaqueError;
+use rama_core::extensions::ExtensionsMut;
 use rama_net::address::ProxyAddress;
 use rama_net::client::EstablishedClientConnection;
-
+use rama_net::transport::TryRefIntoTransportContext;
 use rama_tcp::TcpStream;
 use rama_tcp::client::TcpStreamConnector;
 use rama_tcp::client::service::TcpConnector;
@@ -37,7 +38,7 @@ impl TargetCheckedTcpConnector {
 
 impl<Input> Service<Input> for TargetCheckedTcpConnector
 where
-    Input: Send + ExtensionsRef + 'static,
+    Input: TryRefIntoTransportContext + Send + ExtensionsMut + 'static,
     Input::Error: Into<BoxError> + Send + Sync + 'static,
 {
     type Output = EstablishedClientConnection<TcpStream, Input>;
@@ -95,7 +96,9 @@ impl TargetPolicy {
             } => Ok(*allow_local_binding),
             Self::State(state) => state.allow_local_binding().await.map_err(|err| {
                 let err: BoxError = err.into();
-                err.context("read network proxy config")
+                OpaqueError::from_boxed(err)
+                    .context("read network proxy config")
+                    .into_boxed()
             }),
         }
     }
@@ -107,7 +110,6 @@ mod tests {
     use crate::config::NetworkProxySettings;
     use crate::state::network_proxy_state_for_policy;
     use rama_net::address::HostWithPort;
-    use rama_core::Service;
     use std::net::Ipv4Addr;
     use tokio::net::TcpListener;
 
@@ -121,8 +123,8 @@ mod tests {
             NetworkProxySettings::default(),
         )));
 
-        let request: rama_net::client::ConnectRequest =
-            rama_net::client::ConnectRequest::new(HostWithPort::from(target));
+        let request: rama_tcp::client::Request =
+            rama_tcp::client::Request::new(HostWithPort::from(target));
         let err = Service::serve(&connector, request)
             .await
             .expect_err("local target should be rejected");
@@ -146,8 +148,8 @@ mod tests {
             },
         )));
 
-        let request: rama_net::client::ConnectRequest =
-            rama_net::client::ConnectRequest::new(HostWithPort::from(target));
+        let request: rama_tcp::client::Request =
+            rama_tcp::client::Request::new(HostWithPort::from(target));
         let result = Service::serve(&connector, request).await;
 
         assert!(result.is_ok(), "local target should be allowed: {result:?}");

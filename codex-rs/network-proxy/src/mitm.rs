@@ -21,12 +21,13 @@ use rama_core::Layer;
 use rama_core::Service;
 use rama_core::bytes::Bytes;
 use rama_core::error::BoxError;
-use rama_core::extensions::ExtensionsRef;
+use rama_core::extensions::ExtensionsMut;
 use rama_core::extensions::ExtensionsRef;
 use rama_core::futures::stream::Stream as FuturesStream;
 use rama_core::rt::Executor;
 use rama_core::service::service_fn;
-
+use rama_core::stream::PeekStream;
+use rama_core::stream::StackReader;
 use rama_core::stream::Stream;
 use rama_http::Body;
 use rama_http::BodyDataStream;
@@ -35,12 +36,12 @@ use rama_http::HeaderValue;
 use rama_http::Request;
 use rama_http::Response;
 use rama_http::StatusCode;
-
+use rama_http::Uri;
 use rama_http::header::HOST;
 use rama_http::layer::remove_header::RemoveRequestHeaderLayer;
 use rama_http::layer::remove_header::RemoveResponseHeaderLayer;
 use rama_http_backend::server::HttpServer;
-
+use rama_net::proxy::ProxyTarget;
 use rama_net::stream::SocketInfo;
 use rama_net::tls::server::TlsPeekStream;
 use rama_tls_rustls::server::TlsAcceptorData;
