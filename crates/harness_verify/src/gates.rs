@@ -16,10 +16,7 @@ pub struct GateConfig {
 
 /// Evaluate verification gates against results.
 #[instrument(skip(results, gates), fields(gates = gates.len()))]
-pub fn run_gates(
-    results: &[VerificationResult],
-    gates: &[GateConfig],
-) -> Vec<GateResult> {
+pub fn run_gates(results: &[VerificationResult], gates: &[GateConfig]) -> Vec<GateResult> {
     let mut gate_results = Vec::new();
 
     for gate in gates {
@@ -53,15 +50,9 @@ pub fn run_gates(
 
 fn evaluate_gate(gate: &GateConfig, results: &[VerificationResult]) -> bool {
     match gate.criteria.as_str() {
-        "all_passed" => results
-            .iter()
-            .all(|r| matches!(r.status, VerificationStatus::Passed)),
-        "any_passed" => results
-            .iter()
-            .any(|r| matches!(r.status, VerificationStatus::Passed)),
-        "no_failures" => !results
-            .iter()
-            .any(|r| matches!(r.status, VerificationStatus::Failed)),
+        "all_passed" => results.iter().all(|r| matches!(r.status, VerificationStatus::Passed)),
+        "any_passed" => results.iter().any(|r| matches!(r.status, VerificationStatus::Passed)),
+        "no_failures" => !results.iter().any(|r| matches!(r.status, VerificationStatus::Failed)),
         _ => false,
     }
 }
@@ -90,8 +81,15 @@ mod tests {
 
     #[test]
     fn run_gates_all_passed_requires_every_result_passed() {
-        let results = vec![sample_result(VerificationStatus::Passed), sample_result(VerificationStatus::Passed)];
-        let gates = vec![GateConfig { name: "all".to_string(), criteria: "all_passed".to_string(), threshold: None }];
+        let results = vec![
+            sample_result(VerificationStatus::Passed),
+            sample_result(VerificationStatus::Passed),
+        ];
+        let gates = vec![GateConfig {
+            name: "all".to_string(),
+            criteria: "all_passed".to_string(),
+            threshold: None,
+        }];
         let gate_results = run_gates(&results, &gates);
         assert_eq!(gate_results.len(), 1);
         assert!(gate_results[0].passed);
@@ -99,8 +97,15 @@ mod tests {
 
     #[test]
     fn run_gates_no_failures_allows_skipped() {
-        let results = vec![sample_result(VerificationStatus::Passed), sample_result(VerificationStatus::Skipped)];
-        let gates = vec![GateConfig { name: "no_failures".to_string(), criteria: "no_failures".to_string(), threshold: None }];
+        let results = vec![
+            sample_result(VerificationStatus::Passed),
+            sample_result(VerificationStatus::Skipped),
+        ];
+        let gates = vec![GateConfig {
+            name: "no_failures".to_string(),
+            criteria: "no_failures".to_string(),
+            threshold: None,
+        }];
         let gate_results = run_gates(&results, &gates);
         assert!(gate_results[0].passed);
     }
@@ -108,7 +113,11 @@ mod tests {
     #[test]
     fn run_gates_unknown_criteria_fails() {
         let results = vec![sample_result(VerificationStatus::Passed)];
-        let gates = vec![GateConfig { name: "unknown".to_string(), criteria: "unsupported".to_string(), threshold: None }];
+        let gates = vec![GateConfig {
+            name: "unknown".to_string(),
+            criteria: "unsupported".to_string(),
+            threshold: None,
+        }];
         let gate_results = run_gates(&results, &gates);
         assert!(!gate_results[0].passed);
     }

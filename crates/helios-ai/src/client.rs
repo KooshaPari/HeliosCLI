@@ -115,8 +115,8 @@ impl AiClient {
         let (tx, rx) = mpsc::channel(256);
 
         tokio::spawn(async move {
-            use futures::StreamExt;
             use super::sse::{parse_sse_line, SseEvent};
+            use futures::StreamExt;
             let mut buffer = String::new();
             let mut byte_stream = resp.bytes_stream();
 

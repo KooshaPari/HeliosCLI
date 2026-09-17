@@ -9,14 +9,14 @@ pub mod error;
 pub mod gates;
 pub mod pipeline;
 pub mod result;
-pub mod runners;
 pub mod rules;
+pub mod runners;
 pub mod utils;
 
 pub use error::*;
 pub use gates::*;
 pub use pipeline::*;
 pub use result::*;
-pub use runners::*;
 pub use rules::*;
+pub use runners::*;
 pub use utils::*;

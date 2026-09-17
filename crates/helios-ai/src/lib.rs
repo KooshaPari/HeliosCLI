@@ -114,10 +114,7 @@ mod tests {
             }]
         }"#;
         let chunk: StreamChunk = serde_json::from_str(json).unwrap();
-        assert_eq!(
-            chunk.choices[0].delta.as_ref().unwrap().content.as_deref(),
-            Some("Hello")
-        );
+        assert_eq!(chunk.choices[0].delta.as_ref().unwrap().content.as_deref(), Some("Hello"));
     }
 
     #[test]

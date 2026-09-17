@@ -181,7 +181,9 @@ async fn main() -> Result<()> {
             commands::rollback::cmd_rollback(checkpoint_id, repo)
         }
         Commands::Status => commands::status::cmd_status(),
-        Commands::Enqueue { payload, capacity } => commands::enqueue::cmd_enqueue(payload, capacity),
+        Commands::Enqueue { payload, capacity } => {
+            commands::enqueue::cmd_enqueue(payload, capacity)
+        }
         Commands::Record { script, output, format } => {
             commands::record::cmd_record(script, output, format).await
         }
@@ -262,7 +264,10 @@ mod tests {
     fn cli_exec_parses_approval_policy() {
         let cli = Cli::try_parse_from(["helios", "exec", "do it", "--approval", "full-auto"]);
         assert!(cli.is_ok());
-        assert!(matches!(cli.unwrap().command, Commands::Exec { approval: ApprovalPolicy::FullAuto, .. }));
+        assert!(matches!(
+            cli.unwrap().command,
+            Commands::Exec { approval: ApprovalPolicy::FullAuto, .. }
+        ));
     }
 
     #[test]

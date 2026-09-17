@@ -6,8 +6,8 @@
 use crate::error::Result;
 use crate::gates::{run_gates, GateConfig};
 use crate::result::VerificationResult;
-use crate::runners::run_cargo_test;
 use crate::rules::{run_custom_rule, run_performance_rule, run_security_rule};
+use crate::runners::run_cargo_test;
 use harness_spec::models::{Specification, VerificationRule};
 use tracing::{debug, instrument};
 
@@ -39,7 +39,11 @@ impl VerificationPipeline {
     }
 
     #[instrument(skip(self, rule), fields(spec_id = %spec_id))]
-    async fn run_verification(&self, rule: &VerificationRule, spec_id: &str) -> Result<VerificationResult> {
+    async fn run_verification(
+        &self,
+        rule: &VerificationRule,
+        spec_id: &str,
+    ) -> Result<VerificationResult> {
         match rule {
             VerificationRule::Test { name: _, timeout_seconds } => {
                 let timeout = *timeout_seconds as u64;
@@ -58,7 +62,11 @@ impl VerificationPipeline {
     }
 
     /// Run verification gates
-    pub fn run_gates(&self, results: &[VerificationResult], gates: &[GateConfig]) -> Vec<crate::result::GateResult> {
+    pub fn run_gates(
+        &self,
+        results: &[VerificationResult],
+        gates: &[GateConfig],
+    ) -> Vec<crate::result::GateResult> {
         run_gates(results, gates)
     }
 }

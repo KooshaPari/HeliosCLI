@@ -32,7 +32,9 @@ pub fn emit_panel(
     border: BorderStyle,
 ) -> io::Result<()> {
     let (tl, tr, bl, br, hor, ver) = match border {
-        BorderStyle::Rounded => ("\u{256d}", "\u{256e}", "\u{2570}", "\u{256f}", "\u{2500}", "\u{2502}"),
+        BorderStyle::Rounded => {
+            ("\u{256d}", "\u{256e}", "\u{2570}", "\u{256f}", "\u{2500}", "\u{2502}")
+        }
         BorderStyle::Ascii => ("+", "+", "+", "+", "-", "|"),
     };
 
