@@ -28,9 +28,8 @@ fn stdio_server_bin() -> Result<PathBuf, CargoBinError> {
 
 fn init_params() -> InitializeRequestParams {
     let mut capabilities = ClientCapabilities::default();
-    capabilities.elicitation = Some(
-        ElicitationCapability::new().with_form(FormElicitationCapability::new()),
-    );
+    capabilities.elicitation =
+        Some(ElicitationCapability::new().with_form(FormElicitationCapability::new()));
     InitializeRequestParams::new(
         capabilities,
         Implementation::new("codex-test", "0.0.0-test").with_title("Codex rmcp resource test"),
@@ -67,9 +66,7 @@ async fn rmcp_client_can_list_and_read_resources() -> anyhow::Result<()> {
         )
         .await?;
 
-    let list = client
-        .list_resources(/*params*/ None, Some(Duration::from_secs(5)))
-        .await?;
+    let list = client.list_resources(/*params*/ None, Some(Duration::from_secs(5))).await?;
     let memo = list
         .resources
         .iter()
@@ -82,9 +79,8 @@ async fn rmcp_client_can_list_and_read_resources() -> anyhow::Result<()> {
             .with_description("A sample MCP resource exposed for integration tests.")
             .with_mime_type("text/plain")
     );
-    let templates = client
-        .list_resource_templates(/*params*/ None, Some(Duration::from_secs(5)))
-        .await?;
+    let templates =
+        client.list_resource_templates(/*params*/ None, Some(Duration::from_secs(5))).await?;
     assert_eq!(
         templates,
         ListResourceTemplatesResult {
@@ -105,10 +101,7 @@ async fn rmcp_client_can_list_and_read_resources() -> anyhow::Result<()> {
     );
 
     let read = client
-        .read_resource(
-            ReadResourceRequestParams::new(RESOURCE_URI),
-            Some(Duration::from_secs(5)),
-        )
+        .read_resource(ReadResourceRequestParams::new(RESOURCE_URI), Some(Duration::from_secs(5)))
         .await?;
     let text = read.contents.first().expect("resource contents present");
     assert_eq!(
