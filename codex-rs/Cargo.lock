@@ -3847,9 +3847,7 @@ dependencies = [
 name = "codex-skills"
 version = "0.0.0"
 dependencies = [
- "codex-protocol",
  "codex-utils-absolute-path",
- "codex-utils-path-uri",
  "include_dir",
  "thiserror 2.0.18",
 ]
