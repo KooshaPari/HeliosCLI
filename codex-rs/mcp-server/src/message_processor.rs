@@ -133,6 +133,14 @@ impl MessageProcessor {
             ClientRequest::CompleteRequest(params) => {
                 self.handle_complete(params.params);
             }
+            ClientRequest::GetTaskRequest(_) => {
+                self.handle_unsupported_request(request_id, "tasks/get")
+                    .await;
+            }
+            ClientRequest::UpdateTaskRequest(_) => {
+                self.handle_unsupported_request(request_id, "tasks/update")
+                    .await;
+            }
             ClientRequest::CancelTaskRequest(_) => {
                 self.handle_unsupported_request(request_id, "tasks/cancel")
                     .await;
