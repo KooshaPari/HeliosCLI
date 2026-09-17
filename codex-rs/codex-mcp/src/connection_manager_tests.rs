@@ -39,7 +39,7 @@ use rmcp::model::ElicitRequestParams;
 use rmcp::model::ElicitationAction;
 use rmcp::model::ElicitationCapability;
 use rmcp::model::JsonObject;
-use rmcp::model::Meta;
+use rmcp::model::MetaObject;
 use rmcp::model::NumberOrString;
 use rmcp::model::Tool;
 use std::collections::HashSet;
@@ -242,7 +242,7 @@ fn tool_with_model_visible_input_schema_masks_file_params() {
         .expect("object")
         .clone(),
     );
-    tool.meta = Some(Meta(
+    tool.meta = Some(MetaObject(
         serde_json::json!({
             "openai/fileParams": ["file", "files"]
         })
@@ -373,7 +373,9 @@ async fn disabled_permissions_do_not_auto_accept_elicitation_with_requested_fiel
                 requested_schema: rmcp::model::ElicitationSchema::builder()
                     .required_property(
                         "message",
-                        rmcp::model::PrimitiveSchema::String(rmcp::model::StringSchema::new()),
+                        rmcp::model::PrimitiveSchemaDefinition::String(
+                            rmcp::model::StringSchema::new(),
+                        ),
                     )
                     .build()
                     .expect("schema should build"),
@@ -418,7 +420,9 @@ async fn shared_elicitation_router_targets_the_exact_pending_request() {
             requested_schema: rmcp::model::ElicitationSchema::builder()
                 .required_property(
                     "runtime",
-                    rmcp::model::PrimitiveSchema::String(rmcp::model::StringSchema::new()),
+                    rmcp::model::PrimitiveSchemaDefinition::String(
+                        rmcp::model::StringSchema::new(),
+                    ),
                 )
                 .build()
                 .expect("schema should build"),
@@ -1578,10 +1582,11 @@ fn elicitation_capability_uses_2025_06_18_shape_for_form_only_support() {
 
 #[test]
 fn elicitation_capability_advertises_url_support_when_enabled() {
-    let capability = Some(ElicitationCapability {
-        form: Some(rmcp::model::FormElicitationCapability::default()),
-        url: Some(rmcp::model::UrlElicitationCapability::default()),
-    });
+    let capability = Some(
+        ElicitationCapability::default()
+            .with_form(rmcp::model::FormElicitationCapability::default())
+            .with_url(rmcp::model::UrlElicitationCapability::default()),
+    );
     assert_eq!(
         serde_json::to_value(capability).expect("serialize elicitation capability"),
         serde_json::json!({

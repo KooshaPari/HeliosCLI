@@ -742,6 +742,7 @@ mod tests {
         let addr = listener.local_addr().expect("read metadata listener addr");
         let base_url = format!("http://{addr}");
         let metadata = json!({
+            "issuer": format!("{base_url}/mcp"),
             "authorization_endpoint": format!("{base_url}/oauth/authorize"),
             "token_endpoint": format!("{base_url}/oauth/token"),
             "scopes_supported": [""],

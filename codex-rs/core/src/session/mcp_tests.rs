@@ -1,17 +1,19 @@
 use super::*;
 use rmcp::model::BooleanSchema;
 use rmcp::model::ElicitationSchema;
-use rmcp::model::PrimitiveSchema;
+use rmcp::model::MetaObject;
+use rmcp::model::PrimitiveSchemaDefinition;
+use rmcp::model::RequestMetaObject;
 use serde_json::json;
 
-fn meta(value: Value) -> Option<Meta> {
+fn meta(value: Value) -> Option<RequestMetaObject> {
     let Value::Object(map) = value else {
         panic!("metadata must be an object");
     };
-    Some(Meta(map))
+    Some(RequestMetaObject(MetaObject(map)))
 }
 
-fn guardian_meta(tool_params: Option<Value>) -> Option<Meta> {
+fn guardian_meta(tool_params: Option<Value>) -> Option<RequestMetaObject> {
     let mut value = json!({
         "codex_approval_kind": "mcp_tool_call",
         "codex_request_type": "approval_request",
@@ -26,7 +28,7 @@ fn guardian_meta(tool_params: Option<Value>) -> Option<Meta> {
     meta(value)
 }
 
-fn form_request(meta: Option<Meta>) -> ElicitationReviewRequest {
+fn form_request(meta: Option<RequestMetaObject>) -> ElicitationReviewRequest {
     ElicitationReviewRequest {
         server_name: "browser-use".to_string(),
         request_id: rmcp::model::NumberOrString::Number(7),
@@ -197,7 +199,10 @@ fn guardian_elicitation_review_request_declines_unsupported_opt_in_shapes() {
                 meta: guardian_meta(Some(json!({}))),
                 message: "Allow origin?".to_string(),
                 requested_schema: ElicitationSchema::builder()
-                    .required_property("confirmed", PrimitiveSchema::Boolean(BooleanSchema::new()))
+                    .required_property(
+                        "confirmed",
+                        PrimitiveSchemaDefinition::Boolean(BooleanSchema::new()),
+                    )
                     .build()
                     .expect("schema should build"),
             },

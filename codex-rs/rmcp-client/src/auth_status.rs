@@ -288,11 +288,24 @@ mod tests {
         }
     }
 
+    /// rmcp enforces RFC 8414 issuer validation against the discovery URL, so the
+    /// fixture must advertise an issuer matching the metadata document's URL.
+    fn with_expected_issuer(mut metadata: serde_json::Value, issuer: &str) -> serde_json::Value {
+        if let Some(object) = metadata.as_object_mut() {
+            object.insert(
+                "issuer".to_string(),
+                serde_json::Value::String(issuer.to_string()),
+            );
+        }
+        metadata
+    }
+
     async fn spawn_oauth_discovery_server(metadata: serde_json::Value) -> TestServer {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
             .expect("listener should bind");
         let address = listener.local_addr().expect("listener should have address");
+        let metadata = with_expected_issuer(metadata, &format!("http://{address}/mcp"));
         let app = Router::new().route(
             "/.well-known/oauth-authorization-server/mcp",
             get({

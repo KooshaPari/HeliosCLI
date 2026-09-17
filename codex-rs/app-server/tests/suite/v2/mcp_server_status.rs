@@ -240,6 +240,7 @@ impl ServerHandler for McpStatusServer {
             tools: vec![tool],
             next_cursor: None,
             meta: None,
+            ..Default::default()
         })
     }
 }
@@ -281,6 +282,7 @@ impl ServerHandler for SlowInventoryServer {
             tools: vec![tool],
             next_cursor: None,
             meta: None,
+            ..Default::default()
         })
     }
 
@@ -294,6 +296,7 @@ impl ServerHandler for SlowInventoryServer {
             resources: Vec::new(),
             next_cursor: None,
             meta: None,
+            ..Default::default()
         })
     }
 
@@ -307,6 +310,7 @@ impl ServerHandler for SlowInventoryServer {
             resource_templates: Vec::new(),
             next_cursor: None,
             meta: None,
+            ..Default::default()
         })
     }
 }

@@ -35,11 +35,11 @@ use core_test_support::responses;
 use pretty_assertions::assert_eq;
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::ListResourcesResult;
-use rmcp::model::Meta;
+use rmcp::model::MetaObject;
 use rmcp::model::PaginatedRequestParams;
 use rmcp::model::ProtocolVersion;
-use rmcp::model::RawResource;
 use rmcp::model::ReadResourceRequestParams;
+use rmcp::model::ReadResourceResponse;
 use rmcp::model::ReadResourceResult;
 use rmcp::model::Resource;
 use rmcp::model::ResourceContents;
@@ -795,6 +795,7 @@ impl ServerHandler for ResourceAppsMcpServer {
                 )],
                 next_cursor: Some("skills-page".to_string()),
                 meta: None,
+                ..Default::default()
             });
         }
         if cursor.as_deref() == Some("failing-page") {
@@ -821,6 +822,7 @@ impl ServerHandler for ResourceAppsMcpServer {
             )],
             next_cursor: Some("failing-page".to_string()),
             meta: None,
+            ..Default::default()
         })
     }
 
@@ -828,29 +830,29 @@ impl ServerHandler for ResourceAppsMcpServer {
         &self,
         request: ReadResourceRequestParams,
         _context: RequestContext<RoleServer>,
-    ) -> Result<ReadResourceResult, rmcp::ErrorData> {
+    ) -> Result<ReadResourceResponse, rmcp::ErrorData> {
         let uri = request.uri;
         if uri == SKILL_MAIN_PROMPT_URI {
             self.calls.main_prompt_reads.fetch_add(1, Ordering::Relaxed);
-            return Ok(ReadResourceResult::new(vec![
+            return Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
                 ResourceContents::TextResourceContents {
                     uri: SKILL_MAIN_PROMPT_URI.to_string(),
                     mime_type: Some("text/markdown".to_string()),
                     text: SKILL_CONTENTS.to_string(),
                     meta: None,
                 },
-            ]));
+            ])));
         }
         if uri == SKILL_REFERENCE_URI {
             self.calls.reference_reads.fetch_add(1, Ordering::Relaxed);
-            return Ok(ReadResourceResult::new(vec![
+            return Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
                 ResourceContents::TextResourceContents {
                     uri: SKILL_REFERENCE_URI.to_string(),
                     mime_type: Some("text/markdown".to_string()),
                     text: SKILL_REFERENCE_CONTENTS.to_string(),
                     meta: None,
                 },
-            ]));
+            ])));
         }
         if uri != TEST_RESOURCE_URI {
             return Err(rmcp::ErrorData::resource_not_found(
@@ -859,7 +861,7 @@ impl ServerHandler for ResourceAppsMcpServer {
             ));
         }
 
-        Ok(ReadResourceResult::new(vec![
+        Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
             ResourceContents::TextResourceContents {
                 uri: TEST_RESOURCE_URI.to_string(),
                 mime_type: Some("text/markdown".to_string()),
@@ -872,7 +874,7 @@ impl ServerHandler for ResourceAppsMcpServer {
                 blob: TEST_RESOURCE_BLOB.to_string(),
                 meta: None,
             },
-        ]))
+        ])))
     }
 }
 
@@ -884,17 +886,14 @@ fn skill_resource(
     plugin_name: &str,
     skill_name: &str,
 ) -> Resource {
-    Resource::new(
-        RawResource::new(uri, name)
-            .with_description(description)
-            .with_mime_type(mime_type)
-            .with_meta(skill_resource_meta(plugin_name, skill_name)),
-        /*annotations*/ None,
-    )
+    Resource::new(uri, name)
+        .with_description(description)
+        .with_mime_type(mime_type)
+        .with_meta(skill_resource_meta(plugin_name, skill_name))
 }
 
-fn skill_resource_meta(plugin_name: &str, skill_name: &str) -> Meta {
-    Meta(serde_json::Map::from_iter([
+fn skill_resource_meta(plugin_name: &str, skill_name: &str) -> MetaObject {
+    MetaObject(serde_json::Map::from_iter([
         ("plugin_name".to_string(), json!(plugin_name)),
         ("skill_name".to_string(), json!(skill_name)),
     ]))

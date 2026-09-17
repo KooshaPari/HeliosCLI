@@ -151,7 +151,10 @@ fn openai_form_elicitation(request: CustomRequest) -> Result<Elicitation, rmcp::
     })
 }
 
-fn restore_context_meta(mut request: Elicitation, mut context_meta: RequestMetaObject) -> Elicitation {
+fn restore_context_meta(
+    mut request: Elicitation,
+    mut context_meta: RequestMetaObject,
+) -> Elicitation {
     // RMCP lifts JSON-RPC `_meta` into RequestContext before invoking services.
     context_meta.remove(MCP_PROGRESS_TOKEN_META_KEY);
     if context_meta.is_empty() {
@@ -210,7 +213,8 @@ mod tests {
     use rmcp::model::BooleanSchema;
     use rmcp::model::ElicitRequestParams;
     use rmcp::model::ElicitationSchema;
-    use rmcp::model::PrimitiveSchema;
+    use rmcp::model::MetaObject;
+    use rmcp::model::PrimitiveSchemaDefinition;
     use serde_json::Value;
     use serde_json::json;
 
@@ -220,7 +224,7 @@ mod tests {
     fn restore_context_meta_adds_elicitation_meta_and_removes_progress_token() {
         let request = restore_context_meta(
             Elicitation::Mcp(form_request(/*meta*/ None)),
-            MetaObject(json!({
+            meta_object(json!({
                 "progressToken": "progress-token",
                 "persist": ["session", "always"],
             })),
@@ -228,7 +232,7 @@ mod tests {
 
         assert_eq!(
             request,
-            Elicitation::Mcp(form_request(Some(MetaObject(json!({
+            Elicitation::Mcp(form_request(Some(meta_object(json!({
                 "persist": ["session", "always"],
             })))))
         );
@@ -280,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn elicitation_response_result_serializes_response_MetaObject() {
+    fn elicitation_response_result_serializes_response_meta() {
         let result = rmcp::model::ClientResult::CustomResult(
             elicitation_response_result(ElicitationResponse {
                 action: ElicitationAction::Accept,
@@ -305,13 +309,16 @@ mod tests {
             meta,
             message: "Confirm?".to_string(),
             requested_schema: ElicitationSchema::builder()
-                .required_property("confirmed", PrimitiveSchema::Boolean(BooleanSchema::new()))
+                .required_property(
+                    "confirmed",
+                    PrimitiveSchemaDefinition::Boolean(BooleanSchema::new()),
+                )
                 .build()
                 .expect("schema should build"),
         }
     }
 
-    fn MetaObject(value: Value) -> RequestMetaObject {
+    fn meta_object(value: Value) -> RequestMetaObject {
         let Value::Object(map) = value else {
             panic!("meta must be an object");
         };
