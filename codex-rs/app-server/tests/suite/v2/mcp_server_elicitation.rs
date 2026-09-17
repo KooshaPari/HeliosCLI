@@ -45,7 +45,7 @@ use rmcp::model::BooleanSchema;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
 use rmcp::model::Content;
-use rmcp::model::CreateElicitationRequestParams;
+use rmcp::model::ElicitRequestParams;
 use rmcp::model::CustomRequest;
 use rmcp::model::ElicitationAction;
 use rmcp::model::ElicitationSchema;
@@ -691,7 +691,7 @@ impl ServerHandler for ElicitationAppsMcpServer {
                     .map_err(|err| rmcp::ErrorData::internal_error(err.to_string(), None))?;
                 let result = context
                     .peer
-                    .create_elicitation(CreateElicitationRequestParams::FormElicitationParams {
+                    .create_elicitation(ElicitRequestParams::FormElicitationParams {
                         meta: None,
                         message: ELICITATION_MESSAGE.to_string(),
                         requested_schema,
@@ -739,7 +739,7 @@ impl ServerHandler for ElicitationAppsMcpServer {
                     .map_err(|err| rmcp::ErrorData::internal_error(err.to_string(), None))?;
                 let result = match result {
                     rmcp::model::ClientResult::CustomResult(result) => result.0,
-                    rmcp::model::ClientResult::CreateElicitationResult(result) => {
+                    rmcp::model::ClientResult::ElicitResult(result) => {
                         serde_json::to_value(result)
                             .map_err(|err| rmcp::ErrorData::internal_error(err.to_string(), None))?
                     }

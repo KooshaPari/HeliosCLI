@@ -287,6 +287,7 @@ impl From<rmcp::model::ElicitationAction> for McpServerElicitationAction {
             rmcp::model::ElicitationAction::Accept => Self::Accept,
             rmcp::model::ElicitationAction::Decline => Self::Decline,
             rmcp::model::ElicitationAction::Cancel => Self::Cancel,
+            _ => Self::Cancel,
         }
     }
 }
@@ -706,7 +707,7 @@ impl TryFrom<CoreElicitationRequest> for McpServerElicitationRequest {
 #[ts(export_to = "v2/")]
 pub struct McpServerElicitationRequestResponse {
     pub action: McpServerElicitationAction,
-    /// Structured user input for accepted elicitations, mirroring RMCP `CreateElicitationResult`.
+    /// Structured user input for accepted elicitations, mirroring RMCP `ElicitResult`.
     ///
     /// This is nullable because decline/cancel responses have no content.
     pub content: Option<JsonValue>,
@@ -716,18 +717,18 @@ pub struct McpServerElicitationRequestResponse {
     pub meta: Option<JsonValue>,
 }
 
-impl From<McpServerElicitationRequestResponse> for rmcp::model::CreateElicitationResult {
+impl From<McpServerElicitationRequestResponse> for rmcp::model::ElicitResult {
     fn from(value: McpServerElicitationRequestResponse) -> Self {
-        Self {
-            action: value.action.into(),
-            content: value.content,
-            meta: None,
+        let mut result = rmcp::model::ElicitResult::new(value.action.into());
+        if let Some(content) = value.content {
+            result = result.with_content(content);
         }
+        result
     }
 }
 
-impl From<rmcp::model::CreateElicitationResult> for McpServerElicitationRequestResponse {
-    fn from(value: rmcp::model::CreateElicitationResult) -> Self {
+impl From<rmcp::model::ElicitResult> for McpServerElicitationRequestResponse {
+    fn from(value: rmcp::model::ElicitResult) -> Self {
         Self {
             action: value.action.into(),
             content: value.content,

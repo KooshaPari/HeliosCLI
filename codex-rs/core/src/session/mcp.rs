@@ -622,12 +622,12 @@ fn guardian_elicitation_review_request(
     request: &ElicitationReviewRequest,
 ) -> GuardianElicitationReview {
     let (meta, requested_schema) = match &request.elicitation {
-        Elicitation::Mcp(rmcp::model::CreateElicitationRequestParams::FormElicitationParams {
+        Elicitation::Mcp(rmcp::model::ElicitRequestParams::FormElicitationParams {
             meta,
             requested_schema,
             ..
         }) => (meta, Some(requested_schema)),
-        Elicitation::Mcp(rmcp::model::CreateElicitationRequestParams::UrlElicitationParams {
+        Elicitation::Mcp(rmcp::model::ElicitRequestParams::UrlElicitationParams {
             meta,
             ..
         }) => {

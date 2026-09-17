@@ -31,7 +31,7 @@ fn form_request(meta: Option<Meta>) -> ElicitationReviewRequest {
         server_name: "browser-use".to_string(),
         request_id: rmcp::model::NumberOrString::Number(7),
         elicitation: Elicitation::Mcp(
-            rmcp::model::CreateElicitationRequestParams::FormElicitationParams {
+            rmcp::model::ElicitRequestParams::FormElicitationParams {
                 meta,
                 message: "Allow origin?".to_string(),
                 requested_schema: ElicitationSchema::builder()
@@ -176,7 +176,7 @@ fn guardian_elicitation_review_request_declines_unsupported_opt_in_shapes() {
         server_name: "browser-use".to_string(),
         request_id: rmcp::model::NumberOrString::Number(8),
         elicitation: Elicitation::Mcp(
-            rmcp::model::CreateElicitationRequestParams::UrlElicitationParams {
+            rmcp::model::ElicitRequestParams::UrlElicitationParams {
                 meta: guardian_meta(Some(json!({}))),
                 message: "Open URL".to_string(),
                 url: "https://example.com".to_string(),
@@ -193,7 +193,7 @@ fn guardian_elicitation_review_request_declines_unsupported_opt_in_shapes() {
         server_name: "browser-use".to_string(),
         request_id: rmcp::model::NumberOrString::Number(9),
         elicitation: Elicitation::Mcp(
-            rmcp::model::CreateElicitationRequestParams::FormElicitationParams {
+            rmcp::model::ElicitRequestParams::FormElicitationParams {
                 meta: guardian_meta(Some(json!({}))),
                 message: "Allow origin?".to_string(),
                 requested_schema: ElicitationSchema::builder()

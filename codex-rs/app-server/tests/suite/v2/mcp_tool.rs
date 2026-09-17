@@ -45,7 +45,7 @@ use rmcp::model::BooleanSchema;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
 use rmcp::model::Content;
-use rmcp::model::CreateElicitationRequestParams;
+use rmcp::model::ElicitRequestParams;
 use rmcp::model::ElicitationAction;
 use rmcp::model::ElicitationSchema;
 use rmcp::model::JsonObject;
@@ -764,7 +764,7 @@ impl ServerHandler for ToolAppsMcpServer {
                 .map_err(|err| rmcp::ErrorData::internal_error(err.to_string(), None))?;
             let result = context
                 .peer
-                .create_elicitation(CreateElicitationRequestParams::FormElicitationParams {
+                .create_elicitation(ElicitRequestParams::FormElicitationParams {
                     meta: None,
                     message: ELICITATION_MESSAGE.to_string(),
                     requested_schema,
@@ -790,7 +790,7 @@ impl ServerHandler for ToolAppsMcpServer {
         if message == URL_ELICITATION_TRIGGER_MESSAGE {
             let result = context
                 .peer
-                .create_elicitation(CreateElicitationRequestParams::UrlElicitationParams {
+                .create_elicitation(ElicitRequestParams::UrlElicitationParams {
                     meta: None,
                     message: URL_ELICITATION_MESSAGE.to_string(),
                     url: URL_ELICITATION_URL.to_string(),

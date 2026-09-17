@@ -92,11 +92,11 @@ impl Service<RoleClient> for ElicitationClientService {
         context: RequestContext<RoleClient>,
     ) -> Result<ClientResult, rmcp::ErrorData> {
         match request {
-            ServerRequest::CreateElicitationRequest(request) => {
+            ServerRequest::ElicitRequest(request) => {
                 let response = self
                     .create_elicitation(Elicitation::Mcp(request.params), context)
                     .await?;
-                // RMCP's typed CreateElicitationResult does not model result-level `_meta`.
+                // RMCP's typed ElicitResult does not model result-level `_meta`.
                 let result = elicitation_response_result(response)?;
                 Ok(ClientResult::CustomResult(result))
             }
@@ -208,7 +208,7 @@ fn elicitation_response_result(
 mod tests {
     use pretty_assertions::assert_eq;
     use rmcp::model::BooleanSchema;
-    use rmcp::model::CreateElicitationRequestParams;
+    use rmcp::model::ElicitRequestParams;
     use rmcp::model::ElicitationSchema;
     use rmcp::model::PrimitiveSchema;
     use serde_json::Value;
@@ -301,7 +301,7 @@ mod tests {
     }
 
     fn form_request(meta: Option<Meta>) -> CreateElicitationRequestParams {
-        CreateElicitationRequestParams::FormElicitationParams {
+        ElicitRequestParams::FormElicitationParams {
             meta,
             message: "Confirm?".to_string(),
             requested_schema: ElicitationSchema::builder()

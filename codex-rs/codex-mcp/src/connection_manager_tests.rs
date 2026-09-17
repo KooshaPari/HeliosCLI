@@ -35,7 +35,7 @@ use codex_rmcp_client::RmcpClient;
 use futures::FutureExt;
 use futures::future::BoxFuture;
 use pretty_assertions::assert_eq;
-use rmcp::model::CreateElicitationRequestParams;
+use rmcp::model::ElicitRequestParams;
 use rmcp::model::ElicitationAction;
 use rmcp::model::ElicitationCapability;
 use rmcp::model::JsonObject;
@@ -331,7 +331,7 @@ async fn disabled_permissions_auto_accept_elicitation_with_empty_form_schema() {
     let response = sender(
         NumberOrString::Number(1),
         codex_rmcp_client::Elicitation::Mcp(
-            CreateElicitationRequestParams::FormElicitationParams {
+            ElicitRequestParams::FormElicitationParams {
                 meta: None,
                 message: "Confirm?".to_string(),
                 requested_schema: rmcp::model::ElicitationSchema::builder()
@@ -367,7 +367,7 @@ async fn disabled_permissions_do_not_auto_accept_elicitation_with_requested_fiel
     let response = sender(
         NumberOrString::Number(1),
         codex_rmcp_client::Elicitation::Mcp(
-            CreateElicitationRequestParams::FormElicitationParams {
+            ElicitRequestParams::FormElicitationParams {
                 meta: None,
                 message: "What should I say?".to_string(),
                 requested_schema: rmcp::model::ElicitationSchema::builder()
@@ -412,7 +412,7 @@ async fn shared_elicitation_router_targets_the_exact_pending_request() {
     let sender_a = manager_a.make_sender("server".to_string(), tx_event.clone());
     let sender_b = manager_b.make_sender("server".to_string(), tx_event);
     let elicitation = codex_rmcp_client::Elicitation::Mcp(
-        CreateElicitationRequestParams::FormElicitationParams {
+        ElicitRequestParams::FormElicitationParams {
             meta: None,
             message: "Which runtime?".to_string(),
             requested_schema: rmcp::model::ElicitationSchema::builder()

@@ -114,8 +114,7 @@ fn build_http_client_inner(
             ))
         })?;
         builder = builder
-            .tls_built_in_root_certs(false)
-            .add_root_certificate(certificate);
+            .tls_certs_only([certificate]);
     }
 
     match (&tls.client_certificate, &tls.client_private_key) {
@@ -161,8 +160,7 @@ pub(crate) fn build_async_http_client(
                 ))
             })?;
             builder = builder
-                .tls_built_in_root_certs(false)
-                .add_root_certificate(certificate);
+                .tls_certs_only([certificate]);
         }
 
         match (&tls.client_certificate, &tls.client_private_key) {

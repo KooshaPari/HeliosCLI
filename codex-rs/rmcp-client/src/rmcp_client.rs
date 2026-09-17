@@ -23,8 +23,8 @@ use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
 use rmcp::model::ClientNotification;
 use rmcp::model::ClientRequest;
-use rmcp::model::CreateElicitationRequestParams;
-use rmcp::model::CreateElicitationResult;
+use rmcp::model::ElicitRequestParams;
+use rmcp::model::ElicitResult;
 use rmcp::model::CustomNotification;
 use rmcp::model::CustomRequest;
 use rmcp::model::ElicitationAction;
@@ -253,7 +253,7 @@ fn remaining_operation_timeout(
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Elicitation {
-    Mcp(CreateElicitationRequestParams),
+    Mcp(ElicitRequestParams),
     OpenAiForm {
         meta: Option<serde_json::Value>,
         message: String,
@@ -279,8 +279,8 @@ pub struct ElicitationResponse {
     pub meta: Option<serde_json::Value>,
 }
 
-impl From<CreateElicitationResult> for ElicitationResponse {
-    fn from(value: CreateElicitationResult) -> Self {
+impl From<ElicitResult> for ElicitationResponse {
+    fn from(value: ElicitResult) -> Self {
         Self {
             action: value.action,
             content: value.content,
@@ -289,13 +289,13 @@ impl From<CreateElicitationResult> for ElicitationResponse {
     }
 }
 
-impl From<ElicitationResponse> for CreateElicitationResult {
+impl From<ElicitationResponse> for ElicitResult {
     fn from(value: ElicitationResponse) -> Self {
-        Self {
-            action: value.action,
-            content: value.content,
-            meta: None,
+        let mut result = Self::new(value.action);
+        if let Some(content) = value.content {
+            result = result.with_content(content);
         }
+        result
     }
 }
 
