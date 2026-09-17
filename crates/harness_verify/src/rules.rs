@@ -149,8 +149,7 @@ fn make_failed_result(spec_id: &str, vtype: crate::result::VerificationType, out
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::result::{VerificationStatus, VerificationType};
-    use harness_spec::models::{SpecContent, Specification, VerificationRule};
+    use crate::result::VerificationStatus;
 
     #[tokio::test]
     async fn security_rule_is_skipped_with_message() {
