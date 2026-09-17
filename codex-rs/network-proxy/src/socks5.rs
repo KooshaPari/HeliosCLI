@@ -27,15 +27,14 @@ use rama_core::Layer;
 use rama_core::Service;
 use rama_core::error::BoxError;
 use rama_core::extensions::Extensions;
-use rama_core::extensions::ExtensionsMut;
 use rama_core::extensions::ExtensionsRef;
 use rama_core::layer::AddInputExtensionLayer;
 use rama_core::service::service_fn;
+use rama_net::address::SocketAddress;
 use rama_net::address::HostWithPort;
 use rama_net::client::EstablishedClientConnection;
-use rama_net::proxy::ProxyRequest;
-use rama_net::proxy::ProxyTarget;
-use rama_net::proxy::StreamForwardService;
+use rama_net::client::ConnectRequest;
+use rama_net::proxy::IoForwardService;
 use rama_net::stream::Socket;
 use rama_net::stream::SocketInfo;
 use rama_socks5::Socks5Acceptor;
@@ -44,7 +43,7 @@ use rama_socks5::server::DefaultUdpRelay;
 use rama_socks5::server::udp::RelayRequest;
 use rama_socks5::server::udp::RelayResponse;
 use rama_tcp::TcpStream;
-use rama_tcp::client::Request as TcpRequest;
+
 use rama_tcp::server::TcpListener;
 use std::io;
 use std::net::SocketAddr;
@@ -72,7 +71,7 @@ pub async fn run_socks5(
         .bind(addr)
         .await
         // See `http_proxy.rs` for details on why we wrap `BoxError` before converting to anyhow.
-        .map_err(rama_core::error::OpaqueError::from)
+        .map_err(|err| err.into())
         .map_err(anyhow::Error::from)
         .with_context(|| format!("bind SOCKS5 proxy: {addr}"))?;
 
@@ -523,17 +522,17 @@ impl AsyncWrite for Socks5TcpConnection {
 }
 
 impl Socket for Socks5TcpConnection {
-    fn local_addr(&self) -> io::Result<SocketAddr> {
+    fn local_addr(&self) -> io::Result<SocketAddress> {
         match self {
-            Self::Direct(stream) => stream.local_addr(),
-            Self::Mitm { .. } | Self::DetectTls { .. } => Ok(SocketAddr::from(([0, 0, 0, 0], 0))),
+            Self::Direct(stream) => stream.local_addr().map(Into::into),
+            Self::Mitm { .. } | Self::DetectTls { .. } => Ok(SocketAddress::from(([0, 0, 0, 0], 0))),
         }
     }
 
-    fn peer_addr(&self) -> io::Result<SocketAddr> {
+    fn peer_addr(&self) -> io::Result<SocketAddress> {
         match self {
-            Self::Direct(stream) => stream.peer_addr(),
-            Self::Mitm { .. } | Self::DetectTls { .. } => Ok(SocketAddr::from(([0, 0, 0, 0], 0))),
+            Self::Direct(stream) => stream.peer_addr().map(Into::into),
+            Self::Mitm { .. } | Self::DetectTls { .. } => Ok(SocketAddress::from(([0, 0, 0, 0], 0))),
         }
     }
 }
