@@ -5,7 +5,6 @@ use std::time::Duration;
 use anyhow::Result;
 use codex_exec_server::HttpClient;
 use codex_protocol::protocol::McpAuthStatus;
-use futures::FutureExt;
 use reqwest::Client;
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::HeaderMap;
@@ -233,9 +232,9 @@ async fn discover_streamable_http_oauth_with_headers_and_http_client(
 async fn discover_streamable_http_oauth_with_manager(
     authorization_manager: &AuthorizationManager,
 ) -> Result<Option<StreamableHttpOAuthDiscovery>> {
-    match authorization_manager.discover_metadata().boxed().await {
-        Ok(metadata) => Ok(Some(StreamableHttpOAuthDiscovery {
-            scopes_supported: normalize_scopes(metadata.scopes_supported),
+    match authorization_manager.resolve_metadata().await {
+        Ok(resolution) => Ok(Some(StreamableHttpOAuthDiscovery {
+            scopes_supported: normalize_scopes(resolution.metadata.scopes_supported),
         })),
         Err(AuthError::NoAuthorizationSupport) => Ok(None),
         Err(err) => Err(err.into()),

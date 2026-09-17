@@ -29,14 +29,15 @@ use rmcp::ErrorData as McpError;
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
+use rmcp::model::CallToolResponse;
 use rmcp::model::JsonObject;
 use rmcp::model::ListResourceTemplatesResult;
 use rmcp::model::ListResourcesResult;
 use rmcp::model::ListToolsResult;
 use rmcp::model::PaginatedRequestParams;
-use rmcp::model::RawResource;
-use rmcp::model::RawResourceTemplate;
+
 use rmcp::model::ReadResourceRequestParams;
+use rmcp::model::ReadResourceResponse;
 use rmcp::model::ReadResourceResult;
 use rmcp::model::Resource;
 use rmcp::model::ResourceContents;
@@ -227,6 +228,7 @@ impl ServerHandler for TestToolServer {
                 tools: (*tools).clone(),
                 next_cursor: None,
                 meta: None,
+                ..Default::default()
             })
         }
     }
@@ -242,6 +244,7 @@ impl ServerHandler for TestToolServer {
                 resources: (*resources).clone(),
                 next_cursor: None,
                 meta: None,
+                ..Default::default()
             })
         }
     }
@@ -255,6 +258,7 @@ impl ServerHandler for TestToolServer {
             resource_templates: (*self.resource_templates).clone(),
             next_cursor: None,
             meta: None,
+            ..Default::default()
         })
     }
 
@@ -262,16 +266,16 @@ impl ServerHandler for TestToolServer {
         &self,
         ReadResourceRequestParams { uri, .. }: ReadResourceRequestParams,
         _context: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<ReadResourceResult, McpError> {
+    ) -> Result<ReadResourceResponse, McpError> {
         if uri == MEMO_URI {
-            Ok(ReadResourceResult::new(vec![
+            Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
                 ResourceContents::TextResourceContents {
                     uri,
                     mime_type: Some("text/plain".to_string()),
                     text: Self::memo_text().to_string(),
                     meta: None,
                 },
-            ]))
+            ])))
         } else {
             Err(McpError::resource_not_found(
                 "resource_not_found",
@@ -284,7 +288,7 @@ impl ServerHandler for TestToolServer {
         &self,
         request: CallToolRequestParams,
         _context: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResponse, McpError> {
         match request.name.as_ref() {
             "echo" => {
                 let args: EchoArgs = match request.arguments {
@@ -308,7 +312,7 @@ impl ServerHandler for TestToolServer {
 
                 let mut result = CallToolResult::success(Vec::new());
                 result.structured_content = Some(structured_content);
-                Ok(result)
+                Ok(CallToolResponse::Complete(result))
             }
             other => Err(McpError::invalid_params(
                 format!("unknown tool: {other}"),
@@ -370,31 +374,11 @@ impl TestToolServer {
     }
 
     fn memo_resource() -> Resource {
-        let raw = RawResource {
-            uri: MEMO_URI.to_string(),
-            name: "example-note".to_string(),
-            title: Some("Example Note".to_string()),
-            description: Some("A sample MCP resource exposed for integration tests.".to_string()),
-            mime_type: Some("text/plain".to_string()),
-            size: None,
-            icons: None,
-            meta: None,
-        };
-        Resource::new(raw, None)
+        Resource::new(MEMO_URI, "example-note")
     }
 
     fn memo_template() -> ResourceTemplate {
-        let raw = RawResourceTemplate {
-            uri_template: "memo://codex/{slug}".to_string(),
-            name: "codex-memo".to_string(),
-            title: Some("Codex Memo".to_string()),
-            description: Some(
-                "Template for memo://codex/{slug} resources used in tests.".to_string(),
-            ),
-            mime_type: Some("text/plain".to_string()),
-            icons: None,
-        };
-        ResourceTemplate::new(raw, None)
+        ResourceTemplate::new("memo://codex/{slug}", "codex-memo")
     }
 
     fn memo_text() -> &'static str {

@@ -15,6 +15,7 @@ use reqwest::Url;
 use rmcp::transport::AuthorizationManager;
 use rmcp::transport::AuthorizationSession;
 use rmcp::transport::auth::OAuthClientConfig;
+use rmcp::transport::auth::AuthorizationRequest;
 use rmcp::transport::auth::OAuthHttpClient;
 use rmcp::transport::auth::OAuthState;
 use sha2::Digest;
@@ -669,16 +670,19 @@ async fn start_authorization(
     else {
         let mut oauth_state =
             OAuthState::new_with_oauth_http_client(server_url, http_client).await?;
+        let auth_request = AuthorizationRequest::new(redirect_uri)
+            .with_scopes(scopes.iter().map(|s| (*s).to_string()))
+            .with_client_name("Codex");
         oauth_state
-            .start_authorization(scopes, redirect_uri, Some("Codex"))
+            .start_authorization(auth_request)
             .await?;
         return Ok(oauth_state);
     };
 
     let mut auth_manager =
         AuthorizationManager::new_with_oauth_http_client(server_url, http_client).await?;
-    let metadata = auth_manager.discover_metadata().await?;
-    auth_manager.set_metadata(metadata);
+    let resolution = auth_manager.resolve_metadata().await?;
+    auth_manager.set_metadata(resolution.metadata);
     auth_manager.configure_client(
         OAuthClientConfig::new(oauth_client_id, redirect_uri)
             .with_scopes(scopes.iter().map(|scope| (*scope).to_string()).collect()),

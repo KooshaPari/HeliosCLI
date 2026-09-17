@@ -11,6 +11,7 @@ use rmcp::model::JsonObject;
 use rmcp::model::ListToolsResult;
 use rmcp::model::PaginatedRequestParams;
 use rmcp::model::ServerCapabilities;
+use rmcp::model::CallToolResponse;
 use rmcp::model::ServerInfo;
 use rmcp::model::Tool;
 use serde::Deserialize;
@@ -98,6 +99,7 @@ impl ServerHandler for TestToolServer {
                 tools: (*tools).clone(),
                 next_cursor: None,
                 meta: None,
+                ..Default::default()
             })
         }
     }
@@ -106,7 +108,7 @@ impl ServerHandler for TestToolServer {
         &self,
         request: CallToolRequestParams,
         _context: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResponse, McpError> {
         match request.name.as_ref() {
             "echo" => {
                 let args: EchoArgs = match request.arguments {
@@ -131,7 +133,7 @@ impl ServerHandler for TestToolServer {
 
                 let mut result = CallToolResult::success(Vec::new());
                 result.structured_content = Some(structured_content);
-                Ok(result)
+                Ok(CallToolResponse::Complete(result))
             }
             other => Err(McpError::invalid_params(
                 format!("unknown tool: {other}"),

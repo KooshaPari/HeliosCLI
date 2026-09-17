@@ -13,21 +13,22 @@ use rmcp::ServiceExt;
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
+use rmcp::model::CallToolResponse;
+use rmcp::model::ContentBlock;
 use rmcp::model::InitializeRequestParams;
 use rmcp::model::InitializeResult;
 use rmcp::model::JsonObject;
 use rmcp::model::ListResourceTemplatesResult;
 use rmcp::model::ListResourcesResult;
 use rmcp::model::ListToolsResult;
-use rmcp::model::Meta;
+use rmcp::model::MetaObject;
 use rmcp::model::PaginatedRequestParams;
-use rmcp::model::RawResource;
-use rmcp::model::RawResourceTemplate;
-use rmcp::model::ReadResourceRequestParams;
-use rmcp::model::ReadResourceResult;
 use rmcp::model::Resource;
-use rmcp::model::ResourceContents;
 use rmcp::model::ResourceTemplate;
+use rmcp::model::ReadResourceRequestParams;
+use rmcp::model::ReadResourceResponse;
+use rmcp::model::ReadResourceResult;
+use rmcp::model::ResourceContents;
 use rmcp::model::ServerCapabilities;
 use rmcp::model::ServerInfo;
 use rmcp::model::Tool;
@@ -84,7 +85,7 @@ impl TestToolServer {
             Arc::new(thread_hint_schema),
         );
         thread_hint_tool.annotations = Some(ToolAnnotations::new().read_only(true));
-        let mut thread_hint_meta = Meta::new();
+        let mut thread_hint_meta = MetaObject::new();
         thread_hint_meta.insert("ui".to_string(), json!({ "visibility": [] }));
         thread_hint_tool.meta = Some(thread_hint_meta);
 
@@ -338,31 +339,17 @@ impl TestToolServer {
     }
 
     fn memo_resource() -> Resource {
-        let raw = RawResource {
-            uri: MEMO_URI.to_string(),
-            name: "example-note".to_string(),
-            title: Some("Example Note".to_string()),
-            description: Some("A sample MCP resource exposed for integration tests.".to_string()),
-            mime_type: Some("text/plain".to_string()),
-            size: None,
-            icons: None,
-            meta: None,
-        };
-        Resource::new(raw, None)
+        Resource::new(MEMO_URI, "example-note")
+            .with_title("Example Note")
+            .with_description("A sample MCP resource exposed for integration tests.")
+            .with_mime_type("text/plain")
     }
 
     fn memo_template() -> ResourceTemplate {
-        let raw = RawResourceTemplate {
-            uri_template: "memo://codex/{slug}".to_string(),
-            name: "codex-memo".to_string(),
-            title: Some("Codex Memo".to_string()),
-            description: Some(
-                "Template for memo://codex/{slug} resources used in tests.".to_string(),
-            ),
-            mime_type: Some("text/plain".to_string()),
-            icons: None,
-        };
-        ResourceTemplate::new(raw, None)
+        ResourceTemplate::new("memo://codex/{slug}", "codex-memo")
+            .with_title("Codex Memo")
+            .with_description("Template for memo://codex/{slug} resources used in tests.")
+            .with_mime_type("text/plain")
     }
 
     fn memo_text() -> &'static str {
@@ -483,6 +470,7 @@ impl ServerHandler for TestToolServer {
                 tools: (*tools).clone(),
                 next_cursor: None,
                 meta: None,
+                ..Default::default()
             })
         }
     }
@@ -498,6 +486,7 @@ impl ServerHandler for TestToolServer {
                 resources: (*resources).clone(),
                 next_cursor: None,
                 meta: None,
+                ..Default::default()
             })
         }
     }
@@ -511,6 +500,7 @@ impl ServerHandler for TestToolServer {
             resource_templates: (*self.resource_templates).clone(),
             next_cursor: None,
             meta: None,
+            ..Default::default()
         })
     }
 
@@ -518,16 +508,12 @@ impl ServerHandler for TestToolServer {
         &self,
         ReadResourceRequestParams { uri, .. }: ReadResourceRequestParams,
         _context: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<ReadResourceResult, McpError> {
+    ) -> Result<ReadResourceResponse, McpError> {
         if uri == MEMO_URI {
-            Ok(ReadResourceResult::new(vec![
-                ResourceContents::TextResourceContents {
-                    uri,
-                    mime_type: Some("text/plain".to_string()),
-                    text: Self::memo_text().to_string(),
-                    meta: None,
-                },
-            ]))
+            Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
+                ResourceContents::text(Self::memo_text(), MEMO_URI)
+                    .with_mime_type("text/plain"),
+            ])))
         } else {
             Err(McpError::resource_not_found(
                 "resource_not_found",
@@ -540,7 +526,7 @@ impl ServerHandler for TestToolServer {
         &self,
         request: CallToolRequestParams,
         context: rmcp::service::RequestContext<rmcp::service::RoleServer>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResponse, McpError> {
         match request.name.as_ref() {
             "client_capabilities" => Ok(Self::structured_result(json!({
                 "supportsOpenaiFormElicitation": self
@@ -548,7 +534,7 @@ impl ServerHandler for TestToolServer {
                     .load(Ordering::Relaxed),
             }))),
             "sandbox_meta" => Ok(Self::structured_result(serde_json::Value::Object(
-                context.meta.0,
+                context.meta.0 .0,
             ))),
             "cwd" => {
                 let cwd = std::env::current_dir()
@@ -565,12 +551,12 @@ impl ServerHandler for TestToolServer {
                     .ok_or_else(|| {
                         McpError::invalid_params("missing threadId metadata".to_string(), None)
                     })?;
-                Ok(CallToolResult::success(vec![
-                    rmcp::model::Content::text(format!(
+                Ok(CallToolResponse::Complete(CallToolResult::success(vec![
+                    rmcp::model::ContentBlock::text(format!(
                         "manual history hint for thread {thread_id}"
                     )),
-                    rmcp::model::Content::text("unstructured notes/thread_hint fixture result"),
-                ]))
+                    rmcp::model::ContentBlock::text("unstructured notes/thread_hint fixture result"),
+                ])))
             }
             "echo" | "echo-tool" => {
                 let args: EchoArgs = match request.arguments {
@@ -612,9 +598,9 @@ impl ServerHandler for TestToolServer {
                     )
                 })?;
 
-                Ok(CallToolResult::success(vec![rmcp::model::Content::image(
+                Ok(CallToolResponse::Complete(CallToolResult::success(vec![rmcp::model::ContentBlock::image(
                     data_b64, mime_type,
-                )]))
+                )])))
             }
             "image_scenario" => {
                 let args = Self::parse_call_args::<ImageScenarioArgs>(&request, "image_scenario")?;
@@ -653,7 +639,7 @@ impl TestToolServer {
         }
     }
 
-    fn image_scenario_result(args: ImageScenarioArgs) -> Result<CallToolResult, McpError> {
+    fn image_scenario_result(args: ImageScenarioArgs) -> Result<CallToolResponse, McpError> {
         let (mime_type, valid_data_b64) = if let Some(data_url) = &args.data_url {
             parse_data_url(data_url).ok_or_else(|| {
                 McpError::invalid_params(
@@ -669,64 +655,62 @@ impl TestToolServer {
             .caption
             .unwrap_or_else(|| "Here is the image:".to_string());
 
-        let mut content = Vec::new();
+        let mut content: Vec<rmcp::model::ContentBlock> = Vec::new();
         match args.scenario {
             ImageScenario::ImageOnly => {
-                content.push(rmcp::model::Content::image(valid_data_b64, mime_type));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
             }
             ImageScenario::ImageOnlyOriginalDetail => {
-                let mut meta = rmcp::model::Meta::new();
+                let mut meta = rmcp::model::MetaObject::new();
                 meta.insert(
                     "codex/imageDetail".to_string(),
                     serde_json::json!("original"),
                 );
-                content.push(rmcp::model::Annotated::new(
-                    rmcp::model::RawContent::Image(rmcp::model::RawImageContent {
-                        data: valid_data_b64,
-                        mime_type,
-                        meta: Some(meta),
-                    }),
-                    None,
-                ));
+                content.push(
+                    ContentBlock::Image(
+                        rmcp::model::ImageContent::new(valid_data_b64, mime_type)
+                            .with_meta(meta),
+                    ),
+                );
             }
             ImageScenario::TextThenImage => {
-                content.push(rmcp::model::Content::text(caption));
-                content.push(rmcp::model::Content::image(valid_data_b64, mime_type));
+                content.push(ContentBlock::Text(rmcp::model::TextContent::new(caption)));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
             }
             ImageScenario::InvalidBase64ThenImage => {
-                content.push(rmcp::model::Content::image(
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
                     "not-base64".to_string(),
                     "image/png".to_string(),
-                ));
-                content.push(rmcp::model::Content::image(valid_data_b64, mime_type));
+                )));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
             }
             ImageScenario::InvalidImageBytesThenImage => {
-                content.push(rmcp::model::Content::image(
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
                     "bm90IGFuIGltYWdl".to_string(),
                     "image/png".to_string(),
-                ));
-                content.push(rmcp::model::Content::image(valid_data_b64, mime_type));
+                )));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
             }
             ImageScenario::MultipleValidImages => {
-                content.push(rmcp::model::Content::image(
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
                     valid_data_b64.clone(),
                     mime_type.clone(),
-                ));
-                content.push(rmcp::model::Content::image(valid_data_b64, mime_type));
+                )));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
             }
             ImageScenario::ImageThenText => {
-                content.push(rmcp::model::Content::image(valid_data_b64, mime_type));
-                content.push(rmcp::model::Content::text(caption));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
+                content.push(ContentBlock::Text(rmcp::model::TextContent::new(caption)));
             }
             ImageScenario::TextOnly => {
-                content.push(rmcp::model::Content::text(caption));
+                content.push(ContentBlock::Text(rmcp::model::TextContent::new(caption)));
             }
         }
 
-        Ok(CallToolResult::success(content))
+        Ok(CallToolResponse::Complete(CallToolResult::success(content)))
     }
 
-    async fn sync_result(args: SyncArgs) -> Result<CallToolResult, McpError> {
+    async fn sync_result(args: SyncArgs) -> Result<CallToolResponse, McpError> {
         if let Some(delay) = args.sleep_before_ms
             && delay > 0
         {
@@ -746,10 +730,10 @@ impl TestToolServer {
         Ok(Self::structured_result(json!({ "result": "ok" })))
     }
 
-    fn structured_result(value: serde_json::Value) -> CallToolResult {
+    fn structured_result(value: serde_json::Value) -> CallToolResponse {
         let mut result = CallToolResult::success(Vec::new());
         result.structured_content = Some(value);
-        result
+        CallToolResponse::Complete(result)
     }
 }
 

@@ -30,7 +30,6 @@ use rmcp::model::CustomRequest;
 use rmcp::model::ElicitationAction;
 use rmcp::model::Extensions;
 use rmcp::model::InitializeRequestParams;
-use rmcp::model::InitializeResult;
 use rmcp::model::ListResourceTemplatesResult;
 use rmcp::model::ListResourcesResult;
 use rmcp::model::ListToolsResult;
@@ -40,6 +39,7 @@ use rmcp::model::ReadResourceResult;
 use rmcp::model::RequestId;
 use rmcp::model::RequestParamsMeta;
 use rmcp::model::ServerResult;
+use rmcp::model::ServerPeerInfo;
 use rmcp::model::Tool;
 use rmcp::service::RoleClient;
 use rmcp::service::RunningService;
@@ -264,7 +264,7 @@ pub enum Elicitation {
 impl Elicitation {
     pub fn meta(&self) -> Option<&serde_json::Map<String, serde_json::Value>> {
         match self {
-            Self::Mcp(request) => request.meta().map(|meta| &meta.0),
+            Self::Mcp(request) => request.meta().map(|meta| &meta.0 .0),
             Self::OpenAiForm { meta, .. } => meta.as_ref().and_then(serde_json::Value::as_object),
         }
     }
@@ -426,7 +426,7 @@ impl RmcpClient {
         params: InitializeRequestParams,
         timeout: Option<Duration>,
         send_elicitation: SendElicitation,
-    ) -> Result<InitializeResult> {
+    ) -> Result<ServerPeerInfo> {
         let client_service = ElicitationClientService::new(
             params.clone(),
             send_elicitation,
@@ -540,7 +540,7 @@ impl RmcpClient {
         })
     }
 
-    fn meta_string(meta: Option<&rmcp::model::Meta>, key: &str) -> Option<String> {
+    fn meta_string(meta: Option<&rmcp::model::MetaObject>, key: &str) -> Option<String> {
         meta.and_then(|meta| meta.get(key))
             .and_then(Value::as_str)
             .map(str::trim)
@@ -614,7 +614,7 @@ impl RmcpClient {
             None => None,
         };
         let meta = match meta {
-            Some(Value::Object(map)) => Some(rmcp::model::Meta(map)),
+            Some(Value::Object(map)) => Some(rmcp::model::RequestMetaObject::from(rmcp::model::MetaObject(map))),
             Some(other) => {
                 return Err(anyhow!(
                     "MCP tool request _meta must be a JSON object, got {other}"

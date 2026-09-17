@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use rmcp::RoleClient;
-use rmcp::model::ClientInfo;
+use rmcp::model::ClientConfig;
 use rmcp::model::ClientResult;
 use rmcp::model::CustomRequest;
 use rmcp::model::CustomResult;
 use rmcp::model::ElicitationAction;
-use rmcp::model::Meta;
+use rmcp::model::RequestMetaObject;
 use rmcp::model::RequestParamsMeta;
 use rmcp::model::ServerNotification;
 use rmcp::model::ServerRequest;
@@ -46,7 +46,7 @@ pub(crate) struct ElicitationClientService {
 
 impl ElicitationClientService {
     pub(crate) fn new(
-        client_info: ClientInfo,
+        client_info: ClientConfig,
         send_elicitation: SendElicitation,
         pause_state: ElicitationPauseState,
     ) -> Self {
@@ -134,7 +134,7 @@ impl Service<RoleClient> for ElicitationClientService {
         .await
     }
 
-    fn get_info(&self) -> ClientInfo {
+    fn get_info(&self) -> ClientConfig {
         <LoggingClientHandler as Service<RoleClient>>::get_info(&self.handler)
     }
 }
@@ -151,7 +151,7 @@ fn openai_form_elicitation(request: CustomRequest) -> Result<Elicitation, rmcp::
     })
 }
 
-fn restore_context_meta(mut request: Elicitation, mut context_meta: Meta) -> Elicitation {
+fn restore_context_meta(mut request: Elicitation, mut context_meta: RequestMetaObject) -> Elicitation {
     // RMCP lifts JSON-RPC `_meta` into RequestContext before invoking services.
     context_meta.remove(MCP_PROGRESS_TOKEN_META_KEY);
     if context_meta.is_empty() {
@@ -161,14 +161,14 @@ fn restore_context_meta(mut request: Elicitation, mut context_meta: Meta) -> Eli
     match &mut request {
         Elicitation::Mcp(request) => request
             .meta_mut()
-            .get_or_insert_with(Meta::new)
+            .get_or_insert_with(RequestMetaObject::new)
             .extend(context_meta),
         Elicitation::OpenAiForm { meta, .. } => {
             let meta = meta
                 .get_or_insert_with(|| Value::Object(Map::new()))
                 .as_object_mut();
             if let Some(meta) = meta {
-                meta.extend(context_meta.0);
+                meta.extend(context_meta.0 .0);
             }
         }
     }
@@ -220,7 +220,7 @@ mod tests {
     fn restore_context_meta_adds_elicitation_meta_and_removes_progress_token() {
         let request = restore_context_meta(
             Elicitation::Mcp(form_request(/*meta*/ None)),
-            meta(json!({
+            MetaObject(json!({
                 "progressToken": "progress-token",
                 "persist": ["session", "always"],
             })),
@@ -228,7 +228,7 @@ mod tests {
 
         assert_eq!(
             request,
-            Elicitation::Mcp(form_request(Some(meta(json!({
+            Elicitation::Mcp(form_request(Some(MetaObject(json!({
                 "persist": ["session", "always"],
             })))))
         );
@@ -280,7 +280,7 @@ mod tests {
     }
 
     #[test]
-    fn elicitation_response_result_serializes_response_meta() {
+    fn elicitation_response_result_serializes_response_MetaObject() {
         let result = rmcp::model::ClientResult::CustomResult(
             elicitation_response_result(ElicitationResponse {
                 action: ElicitationAction::Accept,
@@ -300,7 +300,7 @@ mod tests {
         );
     }
 
-    fn form_request(meta: Option<Meta>) -> CreateElicitationRequestParams {
+    fn form_request(meta: Option<RequestMetaObject>) -> ElicitRequestParams {
         ElicitRequestParams::FormElicitationParams {
             meta,
             message: "Confirm?".to_string(),
@@ -311,10 +311,10 @@ mod tests {
         }
     }
 
-    fn meta(value: Value) -> Meta {
+    fn MetaObject(value: Value) -> RequestMetaObject {
         let Value::Object(map) = value else {
             panic!("meta must be an object");
         };
-        Meta(map)
+        RequestMetaObject(MetaObject(map))
     }
 }
