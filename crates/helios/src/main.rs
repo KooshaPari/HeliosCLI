@@ -78,7 +78,7 @@ enum Commands {
         /// Task payload (JSON string)
         payload: String,
         /// Queue capacity
-        #[arg(short, long, default_value = "100")]
+        #[arg(short = 'C', long, default_value = "100")]
         capacity: usize,
     },
 
