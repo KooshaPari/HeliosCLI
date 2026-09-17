@@ -6,4 +6,3 @@ description = "Minimal terminal-UX stub replacing the deleted rich-cli-kit depen
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-atty = "0.2"

@@ -4,7 +4,7 @@
 //! so the workspace compiles. The original crate provided rich terminal panel
 //! rendering; this stub degrades to plain text.
 
-use std::io;
+use std::io::{self, IsTerminal};
 
 /// Terminal capabilities detected at runtime.
 pub struct Caps {
@@ -20,7 +20,7 @@ pub enum BorderStyle {
 
 /// Detect terminal capabilities.
 pub fn detect() -> Caps {
-    Caps { is_tty: atty::is(atty::Stream::Stdout) }
+    Caps { is_tty: io::stdout().is_terminal() }
 }
 
 /// Emit a bordered panel to the given writer.
