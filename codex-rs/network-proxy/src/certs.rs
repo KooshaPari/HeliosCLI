@@ -3,7 +3,7 @@ use anyhow::Result;
 use anyhow::anyhow;
 use base64::Engine as _;
 use codex_utils_home_dir::find_codex_home;
-use rama_net::tls::ApplicationProtocol;
+use rama_tls::ApplicationProtocol;
 use rama_tls_rustls::dep::pki_types::CertificateDer;
 use rama_tls_rustls::dep::pki_types::PrivateKeyDer;
 use rama_tls_rustls::dep::pki_types::pem::PemObject;

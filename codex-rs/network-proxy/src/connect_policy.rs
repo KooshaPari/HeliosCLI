@@ -1,13 +1,11 @@
 use crate::policy::is_non_public_ip;
 use crate::state::NetworkProxyState;
 use rama_core::Service;
-use rama_core::error::BoxError;
-use rama_core::error::ErrorExt as _;
-use rama_core::error::OpaqueError;
-use rama_core::extensions::ExtensionsMut;
+use rama_error::BoxError;
+use rama_error::ErrorExt as _;
+use rama_error::extra::OpaqueError;
 use rama_net::address::ProxyAddress;
 use rama_net::client::EstablishedClientConnection;
-use rama_net::transport::TryRefIntoTransportContext;
 use rama_tcp::TcpStream;
 use rama_tcp::client::TcpStreamConnector;
 use rama_tcp::client::service::TcpConnector;
@@ -38,14 +36,18 @@ impl TargetCheckedTcpConnector {
 
 impl<Input> Service<Input> for TargetCheckedTcpConnector
 where
-    Input: TryRefIntoTransportContext + Send + ExtensionsMut + 'static,
-    Input::Error: Into<BoxError> + Send + Sync + 'static,
+    Input: Send
+        + 'static
+        + rama_core::extensions::ExtensionsRef
+        + rama_net::AuthorityInputExt
+        + rama_net::ProtocolInputExt
+        + rama_net::TransportProtocolInputExt,
 {
     type Output = EstablishedClientConnection<TcpStream, Input>;
     type Error = BoxError;
 
     async fn serve(&self, input: Input) -> Result<Self::Output, Self::Error> {
-        if input.extensions().get::<ProxyAddress>().is_some() {
+        if input.extensions().get_ref::<ProxyAddress>().is_some() {
             return TcpConnector::new().serve(input).await;
         }
 

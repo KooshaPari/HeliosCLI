@@ -35,13 +35,13 @@ use anyhow::Result;
 use codex_utils_rustls_provider::ensure_rustls_crypto_provider;
 use rama_core::Layer;
 use rama_core::Service;
-use rama_core::error::ErrorExt as _;
-use rama_core::error::OpaqueError;
-use rama_core::extensions::ExtensionsMut;
-use rama_core::extensions::ExtensionsRef;
+use rama_error::ErrorExt as _;
+use rama_error::BoxError;
+use rama_error::BoxErrorExt as _;
+use rama_error::extra::OpaqueError;
 use rama_core::layer::AddInputExtensionLayer;
 use rama_core::service::service_fn;
-use rama_core::stream::Stream;
+use rama_core::io::Io;
 use rama_http::Body;
 use rama_http::HeaderMap;
 use rama_http::HeaderName;
@@ -61,14 +61,13 @@ use rama_http_backend::server::layer::upgrade::Upgraded;
 use rama_net::Protocol;
 use rama_net::client::ConnectorService;
 use rama_net::client::EstablishedClientConnection;
-use rama_net::http::RequestContext;
-use rama_net::proxy::ProxyRequest;
-use rama_net::proxy::ProxyTarget;
-use rama_net::proxy::StreamForwardService;
+use rama_net::client::ConnectorTarget;
+use rama_core::io::BridgeIo;
+use rama_net::proxy::IoForwardService;
 use rama_net::stream::SocketInfo;
 use rama_tcp::client::Request as TcpRequest;
 use rama_tcp::server::TcpListener;
-use rama_tls_rustls::client::TlsConnectorDataBuilder;
+use rama_tls::TlsAlpn;
 use rama_tls_rustls::client::TlsConnectorLayer;
 use serde::Serialize;
 use std::convert::Infallible;
@@ -87,6 +86,8 @@ enum ConnectMitmMode {
     DetectTls,
 }
 
+impl rama_core::extensions::Extension for ConnectMitmMode {}
+
 pub async fn run_http_proxy(
     state: Arc<NetworkProxyState>,
     addr: SocketAddr,
@@ -100,7 +101,7 @@ pub async fn run_http_proxy(
         // lifetime bound, which means it doesn't satisfy `anyhow::Context`'s `StdError` constraint.
         // Wrap it in Rama's `OpaqueError` so we can preserve the original error as a source and
         // still use `anyhow` for chaining.
-        .map_err(rama_core::error::OpaqueError::from)
+        .map_err(rama_error::extra::OpaqueError::from)
         .map_err(anyhow::Error::from)
         .with_context(|| format!("bind HTTP proxy: {addr}"))?;
 
@@ -171,16 +172,13 @@ async fn http_connect_accept(
 ) -> Result<(Response, Request), Response> {
     let app_state = req
         .extensions()
-        .get::<Arc<NetworkProxyState>>()
+        .get_ref::<Arc<NetworkProxyState>>()
         .cloned()
         .ok_or_else(|| text_response(StatusCode::INTERNAL_SERVER_ERROR, "missing state"))?;
 
-    let authority = match RequestContext::try_from(&req).map(|ctx| ctx.host_with_port()) {
-        Ok(authority) => authority,
-        Err(err) => {
-            warn!("CONNECT missing authority: {err}");
-            return Err(text_response(StatusCode::BAD_REQUEST, "missing authority"));
-        }
+    let Some(authority) = req.authority() else {
+        warn!("CONNECT missing authority");
+        return Err(text_response(StatusCode::BAD_REQUEST, "missing authority"));
     };
 
     let host = normalize_host(&authority.host.to_string());
@@ -332,13 +330,13 @@ async fn http_connect_accept(
         return Err(blocked_text_with_details(REASON_MITM_REQUIRED, &details));
     }
 
-    req.extensions_mut().insert(ProxyTarget(authority));
-    req.extensions_mut().insert(connect_mitm_mode);
-    req.extensions_mut().insert(mode);
+    req.extensions().insert(ConnectorTarget(authority));
+    req.extensions().insert(connect_mitm_mode);
+    req.extensions().insert(mode);
     if connect_mitm_mode != ConnectMitmMode::Disabled
         && let Some(mitm_state) = mitm_state
     {
-        req.extensions_mut().insert(mitm_state);
+        req.extensions().insert_arc(mitm_state);
     }
 
     Ok((
@@ -353,7 +351,7 @@ async fn http_connect_accept(
 async fn http_connect_proxy(upgraded: Upgraded) -> Result<(), Infallible> {
     let connect_mitm_mode = upgraded
         .extensions()
-        .get::<ConnectMitmMode>()
+        .get_ref::<ConnectMitmMode>()
         .copied()
         .unwrap_or(ConnectMitmMode::Disabled);
     let result: Result<(), OpaqueError> = match connect_mitm_mode {
@@ -362,7 +360,7 @@ async fn http_connect_proxy(upgraded: Upgraded) -> Result<(), Infallible> {
         ConnectMitmMode::DetectTls => match mitm::peek_tls_prefix(upgraded).await {
             Ok((true, stream)) => mitm_connect_tunnel(stream).await,
             Ok((false, stream)) => forward_connect_tunnel(stream).await,
-            Err(err) => Err(OpaqueError::from_display(format!("detect TLS: {err:#}"))),
+            Err(err) => Err(BoxError::from(format!("detect TLS: {err:#}")).into_opaque_error()),
         },
     };
     if let Err(err) = result {
@@ -373,46 +371,46 @@ async fn http_connect_proxy(upgraded: Upgraded) -> Result<(), Infallible> {
 
 async fn mitm_connect_tunnel<S>(stream: S) -> Result<(), OpaqueError>
 where
-    S: Stream + Unpin + ExtensionsMut,
+    S: Io + Unpin,
 {
     let target = stream
         .extensions()
-        .get::<ProxyTarget>()
+        .get_ref::<ConnectorTarget>()
         .map(|target| target.0.clone())
-        .ok_or_else(|| OpaqueError::from_display("missing MITM authority"))?;
+        .ok_or_else(|| OpaqueError::from_static_str("missing MITM authority"))?;
     let host = normalize_host(&target.host.to_string());
     let port = target.port;
     let mode = stream
         .extensions()
-        .get::<NetworkMode>()
+        .get_ref::<NetworkMode>()
         .copied()
         .unwrap_or(NetworkMode::Full);
-    if stream.extensions().get::<Arc<mitm::MitmState>>().is_none() {
-        return Err(OpaqueError::from_display(format!(
+    if stream.extensions().get_ref::<Arc<mitm::MitmState>>().is_none() {
+        return Err(BoxError::from(format!(
             "cannot enable MITM without state (host={host}, port={port})"
-        )));
+        )).into_opaque_error());
     }
 
     info!("CONNECT MITM enabled (host={host}, port={port}, mode={mode:?})");
     mitm::mitm_stream(stream)
         .await
-        .map_err(|err| OpaqueError::from_display(format!("MITM tunnel error: {err}")))
+        .map_err(|err| BoxError::from(format!("MITM tunnel error: {err}")).into_opaque_error())
 }
 
 async fn forward_connect_tunnel<S>(upgraded: S) -> Result<(), OpaqueError>
 where
-    S: Stream + Unpin + ExtensionsMut,
+    S: Io + Unpin,
 {
     let authority = upgraded
         .extensions()
-        .get::<ProxyTarget>()
+        .get_ref::<ConnectorTarget>()
         .map(|target| target.0.clone())
-        .ok_or_else(|| OpaqueError::from_display("missing forward authority"))?;
+        .ok_or_else(|| OpaqueError::from_static_str("missing forward authority"))?;
     let app_state = upgraded
         .extensions()
-        .get::<Arc<NetworkProxyState>>()
+        .get_ref::<Arc<NetworkProxyState>>()
         .cloned()
-        .ok_or_else(|| OpaqueError::from_display("missing app state"))?;
+        .ok_or_else(|| OpaqueError::from_static_str("missing app state"))?;
     let allow_upstream_proxy = match app_state.allow_upstream_proxy().await {
         Ok(allowed) => allowed,
         Err(err) => {
@@ -440,16 +438,13 @@ where
     if let Some(proxy) = proxy {
         extensions.insert(proxy);
     }
+    // rama 0.3 moved TLS ALPN from a connector-data builder to an extension.
+    extensions.insert(TlsAlpn::http_auto());
 
     let req = TcpRequest::new_with_extensions(authority.clone(), extensions)
-        .with_protocol(Protocol::HTTPS);
+        .with_application_protocol(Protocol::HTTPS);
     let proxy_connector = HttpProxyConnector::optional(TargetCheckedTcpConnector::new(app_state));
-    let tls_config = TlsConnectorDataBuilder::new()
-        .with_alpn_protocols_http_auto()
-        .build();
-    let connector = TlsConnectorLayer::tunnel(None)
-        .with_connector_data(tls_config)
-        .into_layer(proxy_connector);
+    let connector = TlsConnectorLayer::tunnel(None).into_layer(proxy_connector);
     info!("CONNECT upstream dial started (target={authority})");
     let connect_started_at = Instant::now();
     let EstablishedClientConnection { conn: target, .. } = match connector.connect(req).await {
@@ -470,13 +465,10 @@ where
         }
     };
 
-    let proxy_req = ProxyRequest {
-        source: upgraded,
-        target,
-    };
+    let proxy_req = BridgeIo(upgraded, target);
     info!("CONNECT tunnel forwarding started (target={authority})");
     let forward_started_at = Instant::now();
-    StreamForwardService::default()
+    IoForwardService::default()
         .serve(proxy_req)
         .await
         .map(|_| {
@@ -500,7 +492,7 @@ async fn http_plain_proxy(
     environment_id: Option<String>,
     mut req: Request,
 ) -> Result<Response, Infallible> {
-    let app_state = match req.extensions().get::<Arc<NetworkProxyState>>().cloned() {
+    let app_state = match req.extensions().get_ref::<Arc<NetworkProxyState>>().cloned() {
         Some(state) => state,
         None => {
             error!("missing app state");
@@ -653,17 +645,13 @@ async fn http_plain_proxy(
         };
     }
 
-    let request_ctx = match RequestContext::try_from(&req) {
-        Ok(request_ctx) => request_ctx,
-        Err(err) => {
-            warn!("missing host: {err}");
-            return Ok(text_response(StatusCode::BAD_REQUEST, "missing host"));
-        }
+    let Some(authority) = req.authority() else {
+        warn!("missing host");
+        return Ok(text_response(StatusCode::BAD_REQUEST, "missing host"));
     };
-    let authority = request_ctx.host_with_port();
     let host = normalize_host(&authority.host.to_string());
     let port = authority.port;
-    if let Err(reason) = validate_absolute_form_host_header(&req, &request_ctx) {
+    if let Err(reason) = validate_absolute_form_host_header(&req, &authority) {
         let client = client.as_deref().unwrap_or_default();
         let host_header = req
             .headers()
@@ -871,16 +859,16 @@ async fn proxy_via_unix_socket(req: Request, socket_path: &str) -> Result<Respon
     }
 }
 
-fn client_addr<T: ExtensionsRef>(input: &T) -> Option<String> {
+fn client_addr<T>(input: &T) -> Option<String> {
     input
         .extensions()
-        .get::<SocketInfo>()
+        .get_ref::<SocketInfo>()
         .map(|info| info.peer_addr().to_string())
 }
 
 fn validate_absolute_form_host_header(
     req: &Request,
-    request_ctx: &RequestContext,
+    authority: &HostWithOptPort,
 ) -> Result<(), &'static str> {
     if req.uri().scheme_str().is_none() {
         return Ok(());
@@ -894,18 +882,18 @@ fn validate_absolute_form_host_header(
         return Ok(());
     };
 
-    if host_header.0.host != request_ctx.authority.host {
+    if host_header.0.host != authority.host {
         return Err("Host header does not match request target");
     }
 
     if let Some(host_port) = host_header.0.port {
-        if Some(host_port) != request_ctx.authority.port {
+        if Some(host_port) != authority.port {
             return Err("Host header does not match request target");
         }
         return Ok(());
     }
 
-    if !request_ctx.authority_has_default_port() {
+    if !authority.has_default_port_for(None) {
         return Err("Host header does not match request target");
     }
 
@@ -1115,7 +1103,7 @@ mod tests {
             .header("host", "example.com:443")
             .body(Body::empty())
             .unwrap();
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let response = http_connect_accept(
             /*policy_decider*/ None, /*environment_id*/ None, req,
@@ -1147,7 +1135,7 @@ mod tests {
             .header("host", "example.com:443")
             .body(Body::empty())
             .unwrap();
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let (response, _request) = http_connect_accept(
             /*policy_decider*/ None, /*environment_id*/ None, req,
@@ -1179,7 +1167,7 @@ mod tests {
             .header("host", "example.com:443")
             .body(Body::empty())
             .unwrap();
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let (response, _request) =
             http_connect_accept(Some(decider), Some("remote".to_string()), req)
@@ -1214,7 +1202,7 @@ mod tests {
             .header("host", "github.com:22")
             .body(Body::empty())
             .unwrap();
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let (response, request) = http_connect_accept(
             /*policy_decider*/ None, /*environment_id*/ None, req,
@@ -1223,7 +1211,7 @@ mod tests {
         .expect("brokered credentials should defer MITM until protocol detection");
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
-            request.extensions().get::<ConnectMitmMode>().copied(),
+            request.extensions().get_ref::<ConnectMitmMode>().copied(),
             Some(ConnectMitmMode::DetectTls)
         );
     }
@@ -1313,7 +1301,7 @@ mod tests {
             .header("host", "api.github.com:8443")
             .body(Body::empty())
             .unwrap();
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let response = http_connect_accept(
             /*policy_decider*/ None, /*environment_id*/ None, req,
@@ -1426,7 +1414,7 @@ mod tests {
             .header("x-unix-socket", "/tmp/test.sock")
             .body(Body::empty())
             .expect("request should build");
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let response = http_plain_proxy(
             /*policy_decider*/ None, /*environment_id*/ None, req,
@@ -1453,7 +1441,7 @@ mod tests {
             .header("x-unix-socket", "/tmp/test.sock")
             .body(Body::empty())
             .expect("request should build");
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let response = http_plain_proxy(
             /*policy_decider*/ None, /*environment_id*/ None, req,
@@ -1487,7 +1475,7 @@ mod tests {
             .header("x-unix-socket", "/tmp/test.sock")
             .body(Body::empty())
             .expect("request should build");
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let response = http_plain_proxy(
             /*policy_decider*/ None, /*environment_id*/ None, req,
@@ -1513,7 +1501,7 @@ mod tests {
             .header("host", "api.openai.com:443")
             .body(Body::empty())
             .unwrap();
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let response = http_connect_accept(
             /*policy_decider*/ None, /*environment_id*/ None, req,
@@ -1538,7 +1526,7 @@ mod tests {
             .header(header::HOST, "api.github.com")
             .body(Body::empty())
             .unwrap();
-        req.extensions_mut().insert(state);
+        req.extensions().insert_arc(state);
 
         let response = http_plain_proxy(
             /*policy_decider*/ None, /*environment_id*/ None, req,
@@ -1557,7 +1545,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            validate_absolute_form_host_header(&req, &RequestContext::try_from(&req).unwrap(),),
+            validate_absolute_form_host_header(&req, &req.authority().unwrap()),
             Ok(())
         );
     }
@@ -1572,7 +1560,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            validate_absolute_form_host_header(&req, &RequestContext::try_from(&req).unwrap(),),
+            validate_absolute_form_host_header(&req, &req.authority().unwrap()),
             Err("Host header does not match request target")
         );
     }
@@ -1587,7 +1575,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            validate_absolute_form_host_header(&req, &RequestContext::try_from(&req).unwrap(),),
+            validate_absolute_form_host_header(&req, &req.authority().unwrap()),
             Err("Host header does not match request target")
         );
     }

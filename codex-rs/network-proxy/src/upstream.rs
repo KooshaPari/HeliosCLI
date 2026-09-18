@@ -3,11 +3,9 @@ use crate::state::NetworkProxyState;
 use codex_utils_rustls_provider::ensure_rustls_crypto_provider;
 use rama_core::Layer;
 use rama_core::Service;
-use rama_core::error::BoxError;
-use rama_core::error::ErrorExt as _;
-use rama_core::error::OpaqueError;
-use rama_core::extensions::ExtensionsMut;
-use rama_core::extensions::ExtensionsRef;
+use rama_error::BoxError;
+use rama_error::ErrorExt as _;
+use rama_error::extra::OpaqueError;
 use rama_core::service::BoxService;
 use rama_http::Body;
 use rama_http::Request;
@@ -18,7 +16,6 @@ use rama_http_backend::client::HttpConnector;
 use rama_http_backend::client::proxy::layer::HttpProxyConnectorLayer;
 use rama_net::address::ProxyAddress;
 use rama_net::client::EstablishedClientConnection;
-use rama_net::http::RequestContext;
 use rama_tls_rustls::client::TlsConnectorDataBuilder;
 use rama_tls_rustls::client::TlsConnectorLayer;
 use rama_tls_rustls::client::client_root_certs;
@@ -167,16 +164,13 @@ impl Service<Request<Body>> for UpstreamClient {
     type Error = OpaqueError;
 
     async fn serve(&self, mut req: Request<Body>) -> Result<Self::Output, Self::Error> {
-        let request_context = RequestContext::try_from(&req).ok();
-        let authority = request_context
-            .as_ref()
-            .map(|ctx| ctx.host_with_port().to_string())
+        let authority = req
+            .authority()
+            .and_then(|authority| authority.into_host_with_port(None))
+            .map(|authority| authority.to_string())
             .unwrap_or_else(|| "<unknown>".to_string());
         let proxy = self.proxy_config.proxy_for_protocol(
-            request_context
-                .as_ref()
-                .map(|ctx| ctx.protocol.is_secure())
-                .unwrap_or(false),
+            req.protocol().map(|protocol| protocol.is_secure()).unwrap_or(false),
         );
         match proxy.as_ref() {
             Some(proxy) => info!(
@@ -186,7 +180,7 @@ impl Service<Request<Body>> for UpstreamClient {
             None => info!("HTTP upstream route selected (target={authority}, route=direct)"),
         }
         if let Some(proxy) = proxy {
-            req.extensions_mut().insert(proxy);
+            req.extensions().insert(proxy);
         }
 
         let uri = req.uri().clone();
@@ -211,7 +205,7 @@ impl Service<Request<Body>> for UpstreamClient {
             }
         };
 
-        req.extensions_mut()
+        req.extensions()
             .extend(http_connection.extensions().clone());
 
         let request_started_at = Instant::now();
