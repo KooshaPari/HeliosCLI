@@ -159,8 +159,7 @@ impl MessageProcessor {
                     .await;
             }
             _ => {
-                self.handle_unsupported_request(request_id, "unknown")
-                    .await;
+                self.handle_unsupported_request(request_id, "unknown").await;
             }
         }
     }
@@ -374,9 +373,9 @@ impl MessageProcessor {
                     }
                 },
                 Err(e) => {
-                    let result = CallToolResult::error(vec![rmcp::model::ContentBlock::text(format!(
-                        "Failed to parse configuration for Codex tool: {e}"
-                    ))]);
+                    let result = CallToolResult::error(vec![rmcp::model::ContentBlock::text(
+                        format!("Failed to parse configuration for Codex tool: {e}"),
+                    )]);
                     self.outgoing.send_response(id, result).await;
                     return;
                 }
@@ -425,9 +424,9 @@ impl MessageProcessor {
                 Ok(params) => params,
                 Err(e) => {
                     tracing::error!("Failed to parse Codex tool call reply parameters: {e}");
-                    let result = CallToolResult::error(vec![rmcp::model::ContentBlock::text(format!(
-                        "Failed to parse configuration for Codex tool: {e}"
-                    ))]);
+                    let result = CallToolResult::error(vec![rmcp::model::ContentBlock::text(
+                        format!("Failed to parse configuration for Codex tool: {e}"),
+                    )]);
                     self.outgoing.send_response(request_id, result).await;
                     return;
                 }

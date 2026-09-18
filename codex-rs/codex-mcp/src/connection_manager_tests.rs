@@ -330,15 +330,13 @@ async fn disabled_permissions_auto_accept_elicitation_with_empty_form_schema() {
 
     let response = sender(
         NumberOrString::Number(1),
-        codex_rmcp_client::Elicitation::Mcp(
-            ElicitRequestParams::FormElicitationParams {
-                meta: None,
-                message: "Confirm?".to_string(),
-                requested_schema: rmcp::model::ElicitationSchema::builder()
-                    .build()
-                    .expect("schema should build"),
-            },
-        ),
+        codex_rmcp_client::Elicitation::Mcp(ElicitRequestParams::FormElicitationParams {
+            meta: None,
+            message: "Confirm?".to_string(),
+            requested_schema: rmcp::model::ElicitationSchema::builder()
+                .build()
+                .expect("schema should build"),
+        }),
     )
     .await
     .expect("elicitation should auto accept");
@@ -366,11 +364,11 @@ async fn disabled_permissions_do_not_auto_accept_elicitation_with_requested_fiel
 
     let response = sender(
         NumberOrString::Number(1),
-        codex_rmcp_client::Elicitation::Mcp(
-            ElicitRequestParams::FormElicitationParams {
-                meta: None,
-                message: "What should I say?".to_string(),
-                requested_schema: rmcp::model::ElicitationSchema::builder()
+        codex_rmcp_client::Elicitation::Mcp(ElicitRequestParams::FormElicitationParams {
+            meta: None,
+            message: "What should I say?".to_string(),
+            requested_schema:
+                rmcp::model::ElicitationSchema::builder()
                     .required_property(
                         "message",
                         rmcp::model::PrimitiveSchemaDefinition::String(
@@ -379,8 +377,7 @@ async fn disabled_permissions_do_not_auto_accept_elicitation_with_requested_fiel
                     )
                     .build()
                     .expect("schema should build"),
-            },
-        ),
+        }),
     )
     .await
     .expect("elicitation should auto decline");
@@ -413,21 +410,21 @@ async fn shared_elicitation_router_targets_the_exact_pending_request() {
     let (tx_event, rx_event) = async_channel::bounded(2);
     let sender_a = manager_a.make_sender("server".to_string(), tx_event.clone());
     let sender_b = manager_b.make_sender("server".to_string(), tx_event);
-    let elicitation = codex_rmcp_client::Elicitation::Mcp(
-        ElicitRequestParams::FormElicitationParams {
+    let elicitation =
+        codex_rmcp_client::Elicitation::Mcp(ElicitRequestParams::FormElicitationParams {
             meta: None,
             message: "Which runtime?".to_string(),
-            requested_schema: rmcp::model::ElicitationSchema::builder()
-                .required_property(
-                    "runtime",
-                    rmcp::model::PrimitiveSchemaDefinition::String(
-                        rmcp::model::StringSchema::new(),
-                    ),
-                )
-                .build()
-                .expect("schema should build"),
-        },
-    );
+            requested_schema:
+                rmcp::model::ElicitationSchema::builder()
+                    .required_property(
+                        "runtime",
+                        rmcp::model::PrimitiveSchemaDefinition::String(
+                            rmcp::model::StringSchema::new(),
+                        ),
+                    )
+                    .build()
+                    .expect("schema should build"),
+        });
 
     let pending_a = tokio::spawn(sender_a(NumberOrString::Number(1), elicitation.clone()));
     let EventMsg::ElicitationRequest(request_a) = rx_event.recv().await.expect("request A").msg

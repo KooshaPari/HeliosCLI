@@ -171,7 +171,7 @@ fn restore_context_meta(
                 .get_or_insert_with(|| Value::Object(Map::new()))
                 .as_object_mut();
             if let Some(meta) = meta {
-                meta.extend(context_meta.0 .0);
+                meta.extend(context_meta.0.0);
             }
         }
     }

@@ -292,7 +292,10 @@ mod tests {
     /// fixture must advertise an issuer matching the metadata document's URL.
     fn with_expected_issuer(mut metadata: serde_json::Value, issuer: &str) -> serde_json::Value {
         if let Some(object) = metadata.as_object_mut() {
-            object.insert("issuer".to_string(), serde_json::Value::String(issuer.to_string()));
+            object.insert(
+                "issuer".to_string(),
+                serde_json::Value::String(issuer.to_string()),
+            );
         }
         metadata
     }

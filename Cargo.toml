@@ -71,7 +71,6 @@ regex = "1.10"
 tempfile = "3.10"
 walkdir = "2.4"
 proptest = "1.4"
-rust_decimal = { version = "1.33", features = ["serde"] }
 pyo3 = { version = "0.28", features = ["extension-module", "auto-initialize"] }
 toml = "0.8"
 

@@ -535,10 +535,7 @@ fn validate_base_url_accepts_clean_ws_only() {
 #[test]
 fn validate_base_url_rejects_ws_http_double_scheme() {
     // The exact daemon-log signature observed in production.
-    let result = validate_base_url(
-        "omni",
-        "ws://http://100.96.135.160:20128/v1",
-    );
+    let result = validate_base_url("omni", "ws://http://100.96.135.160:20128/v1");
     let err = result.expect_err("expected ws://http://... to be rejected");
     let msg = err.to_string();
     assert!(
@@ -557,10 +554,7 @@ fn validate_base_url_rejects_ws_http_double_scheme() {
 
 #[test]
 fn validate_base_url_rejects_wss_https_double_scheme() {
-    let result = validate_base_url(
-        "secure-omni",
-        "wss://https://api.example.com/v1",
-    );
+    let result = validate_base_url("secure-omni", "wss://https://api.example.com/v1");
     let err = result.expect_err("expected wss://https://... to be rejected");
     let msg = err.to_string();
     assert!(

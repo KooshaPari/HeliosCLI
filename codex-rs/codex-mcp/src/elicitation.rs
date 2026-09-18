@@ -207,13 +207,11 @@ impl ElicitationRequestManager {
                 );
                 let routed_request_id = RequestId::String(public_request_id.clone().into());
                 let request = match elicitation {
-                    Elicitation::Mcp(
-                        rmcp::model::ElicitRequestParams::FormElicitationParams {
-                            meta,
-                            message,
-                            requested_schema,
-                        },
-                    ) => ElicitationRequest::Form {
+                    Elicitation::Mcp(rmcp::model::ElicitRequestParams::FormElicitationParams {
+                        meta,
+                        message,
+                        requested_schema,
+                    }) => ElicitationRequest::Form {
                         meta: meta
                             .map(serde_json::to_value)
                             .transpose()
@@ -222,14 +220,12 @@ impl ElicitationRequestManager {
                         requested_schema: serde_json::to_value(requested_schema)
                             .context("failed to serialize MCP elicitation schema")?,
                     },
-                    Elicitation::Mcp(
-                        rmcp::model::ElicitRequestParams::UrlElicitationParams {
-                            meta,
-                            message,
-                            url,
-                            elicitation_id,
-                        },
-                    ) => ElicitationRequest::Url {
+                    Elicitation::Mcp(rmcp::model::ElicitRequestParams::UrlElicitationParams {
+                        meta,
+                        message,
+                        url,
+                        elicitation_id,
+                    }) => ElicitationRequest::Url {
                         meta: meta
                             .map(serde_json::to_value)
                             .transpose()
@@ -248,9 +244,7 @@ impl ElicitationRequestManager {
                         requested_schema,
                     },
                     _ => {
-                        return Err(anyhow::anyhow!(
-                            "unsupported MCP elicitation variant"
-                        ));
+                        return Err(anyhow::anyhow!("unsupported MCP elicitation variant"));
                     }
                 };
                 let (tx, rx) = oneshot::channel();
@@ -297,9 +291,7 @@ fn can_auto_accept_elicitation(elicitation: &Elicitation) -> bool {
             // Auto-accept confirm/approval elicitations without schema requirements.
             requested_schema.properties.is_empty()
         }
-        Elicitation::Mcp(rmcp::model::ElicitRequestParams::UrlElicitationParams {
-            ..
-        })
+        Elicitation::Mcp(rmcp::model::ElicitRequestParams::UrlElicitationParams { .. })
         | Elicitation::OpenAiForm { .. } => false,
         _ => false,
     }

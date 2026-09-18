@@ -28,8 +28,8 @@ use axum::routing::post;
 use rmcp::ErrorData as McpError;
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::CallToolRequestParams;
-use rmcp::model::CallToolResult;
 use rmcp::model::CallToolResponse;
+use rmcp::model::CallToolResult;
 use rmcp::model::JsonObject;
 use rmcp::model::ListResourceTemplatesResult;
 use rmcp::model::ListResourcesResult;
@@ -268,14 +268,14 @@ impl ServerHandler for TestToolServer {
         _context: rmcp::service::RequestContext<rmcp::service::RoleServer>,
     ) -> Result<ReadResourceResponse, McpError> {
         if uri == MEMO_URI {
-            Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
-                ResourceContents::TextResourceContents {
+            Ok(ReadResourceResponse::Complete(ReadResourceResult::new(
+                vec![ResourceContents::TextResourceContents {
                     uri,
                     mime_type: Some("text/plain".to_string()),
                     text: Self::memo_text().to_string(),
                     meta: None,
-                },
-            ])))
+                }],
+            )))
         } else {
             Err(McpError::resource_not_found(
                 "resource_not_found",

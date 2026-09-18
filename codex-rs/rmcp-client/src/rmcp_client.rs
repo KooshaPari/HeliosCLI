@@ -23,10 +23,10 @@ use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
 use rmcp::model::ClientNotification;
 use rmcp::model::ClientRequest;
-use rmcp::model::ElicitRequestParams;
-use rmcp::model::ElicitResult;
 use rmcp::model::CustomNotification;
 use rmcp::model::CustomRequest;
+use rmcp::model::ElicitRequestParams;
+use rmcp::model::ElicitResult;
 use rmcp::model::ElicitationAction;
 use rmcp::model::Extensions;
 use rmcp::model::InitializeRequestParams;
@@ -38,8 +38,8 @@ use rmcp::model::ReadResourceRequestParams;
 use rmcp::model::ReadResourceResult;
 use rmcp::model::RequestId;
 use rmcp::model::RequestParamsMeta;
-use rmcp::model::ServerResult;
 use rmcp::model::ServerPeerInfo;
+use rmcp::model::ServerResult;
 use rmcp::model::Tool;
 use rmcp::service::RoleClient;
 use rmcp::service::RunningService;
@@ -264,7 +264,7 @@ pub enum Elicitation {
 impl Elicitation {
     pub fn meta(&self) -> Option<&serde_json::Map<String, serde_json::Value>> {
         match self {
-            Self::Mcp(request) => request.meta().map(|meta| &meta.0 .0),
+            Self::Mcp(request) => request.meta().map(|meta| &meta.0.0),
             Self::OpenAiForm { meta, .. } => meta.as_ref().and_then(serde_json::Value::as_object),
         }
     }
@@ -614,7 +614,9 @@ impl RmcpClient {
             None => None,
         };
         let meta = match meta {
-            Some(Value::Object(map)) => Some(rmcp::model::RequestMetaObject::from(rmcp::model::MetaObject(map))),
+            Some(Value::Object(map)) => Some(rmcp::model::RequestMetaObject::from(
+                rmcp::model::MetaObject(map),
+            )),
             Some(other) => {
                 return Err(anyhow!(
                     "MCP tool request _meta must be a JSON object, got {other}"

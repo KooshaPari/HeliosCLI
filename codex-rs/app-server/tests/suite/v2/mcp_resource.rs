@@ -834,25 +834,25 @@ impl ServerHandler for ResourceAppsMcpServer {
         let uri = request.uri;
         if uri == SKILL_MAIN_PROMPT_URI {
             self.calls.main_prompt_reads.fetch_add(1, Ordering::Relaxed);
-            return Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
-                ResourceContents::TextResourceContents {
+            return Ok(ReadResourceResponse::Complete(ReadResourceResult::new(
+                vec![ResourceContents::TextResourceContents {
                     uri: SKILL_MAIN_PROMPT_URI.to_string(),
                     mime_type: Some("text/markdown".to_string()),
                     text: SKILL_CONTENTS.to_string(),
                     meta: None,
-                },
-            ])));
+                }],
+            )));
         }
         if uri == SKILL_REFERENCE_URI {
             self.calls.reference_reads.fetch_add(1, Ordering::Relaxed);
-            return Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
-                ResourceContents::TextResourceContents {
+            return Ok(ReadResourceResponse::Complete(ReadResourceResult::new(
+                vec![ResourceContents::TextResourceContents {
                     uri: SKILL_REFERENCE_URI.to_string(),
                     mime_type: Some("text/markdown".to_string()),
                     text: SKILL_REFERENCE_CONTENTS.to_string(),
                     meta: None,
-                },
-            ])));
+                }],
+            )));
         }
         if uri != TEST_RESOURCE_URI {
             return Err(rmcp::ErrorData::resource_not_found(
@@ -861,20 +861,22 @@ impl ServerHandler for ResourceAppsMcpServer {
             ));
         }
 
-        Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
-            ResourceContents::TextResourceContents {
-                uri: TEST_RESOURCE_URI.to_string(),
-                mime_type: Some("text/markdown".to_string()),
-                text: TEST_RESOURCE_TEXT.to_string(),
-                meta: None,
-            },
-            ResourceContents::BlobResourceContents {
-                uri: TEST_BLOB_RESOURCE_URI.to_string(),
-                mime_type: Some("application/octet-stream".to_string()),
-                blob: TEST_RESOURCE_BLOB.to_string(),
-                meta: None,
-            },
-        ])))
+        Ok(ReadResourceResponse::Complete(ReadResourceResult::new(
+            vec![
+                ResourceContents::TextResourceContents {
+                    uri: TEST_RESOURCE_URI.to_string(),
+                    mime_type: Some("text/markdown".to_string()),
+                    text: TEST_RESOURCE_TEXT.to_string(),
+                    meta: None,
+                },
+                ResourceContents::BlobResourceContents {
+                    uri: TEST_BLOB_RESOURCE_URI.to_string(),
+                    mime_type: Some("application/octet-stream".to_string()),
+                    blob: TEST_RESOURCE_BLOB.to_string(),
+                    meta: None,
+                },
+            ],
+        )))
     }
 }
 

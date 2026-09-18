@@ -12,8 +12,8 @@ use rmcp::ErrorData as McpError;
 use rmcp::ServiceExt;
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::CallToolRequestParams;
-use rmcp::model::CallToolResult;
 use rmcp::model::CallToolResponse;
+use rmcp::model::CallToolResult;
 use rmcp::model::ContentBlock;
 use rmcp::model::InitializeRequestParams;
 use rmcp::model::InitializeResult;
@@ -23,12 +23,12 @@ use rmcp::model::ListResourcesResult;
 use rmcp::model::ListToolsResult;
 use rmcp::model::MetaObject;
 use rmcp::model::PaginatedRequestParams;
-use rmcp::model::Resource;
-use rmcp::model::ResourceTemplate;
 use rmcp::model::ReadResourceRequestParams;
 use rmcp::model::ReadResourceResponse;
 use rmcp::model::ReadResourceResult;
+use rmcp::model::Resource;
 use rmcp::model::ResourceContents;
+use rmcp::model::ResourceTemplate;
 use rmcp::model::ServerCapabilities;
 use rmcp::model::ServerInfo;
 use rmcp::model::Tool;
@@ -510,10 +510,12 @@ impl ServerHandler for TestToolServer {
         _context: rmcp::service::RequestContext<rmcp::service::RoleServer>,
     ) -> Result<ReadResourceResponse, McpError> {
         if uri == MEMO_URI {
-            Ok(ReadResourceResponse::Complete(ReadResourceResult::new(vec![
-                ResourceContents::text(Self::memo_text(), MEMO_URI)
-                    .with_mime_type("text/plain"),
-            ])))
+            Ok(ReadResourceResponse::Complete(ReadResourceResult::new(
+                vec![
+                    ResourceContents::text(Self::memo_text(), MEMO_URI)
+                        .with_mime_type("text/plain"),
+                ],
+            )))
         } else {
             Err(McpError::resource_not_found(
                 "resource_not_found",
@@ -534,7 +536,7 @@ impl ServerHandler for TestToolServer {
                     .load(Ordering::Relaxed),
             }))),
             "sandbox_meta" => Ok(Self::structured_result(serde_json::Value::Object(
-                context.meta.0 .0,
+                context.meta.0.0,
             ))),
             "cwd" => {
                 let cwd = std::env::current_dir()
@@ -555,7 +557,9 @@ impl ServerHandler for TestToolServer {
                     rmcp::model::ContentBlock::text(format!(
                         "manual history hint for thread {thread_id}"
                     )),
-                    rmcp::model::ContentBlock::text("unstructured notes/thread_hint fixture result"),
+                    rmcp::model::ContentBlock::text(
+                        "unstructured notes/thread_hint fixture result",
+                    ),
                 ])))
             }
             "echo" | "echo-tool" => {
@@ -598,9 +602,9 @@ impl ServerHandler for TestToolServer {
                     )
                 })?;
 
-                Ok(CallToolResponse::Complete(CallToolResult::success(vec![rmcp::model::ContentBlock::image(
-                    data_b64, mime_type,
-                )])))
+                Ok(CallToolResponse::Complete(CallToolResult::success(vec![
+                    rmcp::model::ContentBlock::image(data_b64, mime_type),
+                ])))
             }
             "image_scenario" => {
                 let args = Self::parse_call_args::<ImageScenarioArgs>(&request, "image_scenario")?;
@@ -658,7 +662,10 @@ impl TestToolServer {
         let mut content: Vec<rmcp::model::ContentBlock> = Vec::new();
         match args.scenario {
             ImageScenario::ImageOnly => {
-                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
+                    valid_data_b64,
+                    mime_type,
+                )));
             }
             ImageScenario::ImageOnlyOriginalDetail => {
                 let mut meta = rmcp::model::MetaObject::new();
@@ -666,40 +673,52 @@ impl TestToolServer {
                     "codex/imageDetail".to_string(),
                     serde_json::json!("original"),
                 );
-                content.push(
-                    ContentBlock::Image(
-                        rmcp::model::ImageContent::new(valid_data_b64, mime_type)
-                            .with_meta(meta),
-                    ),
-                );
+                content.push(ContentBlock::Image(
+                    rmcp::model::ImageContent::new(valid_data_b64, mime_type).with_meta(meta),
+                ));
             }
             ImageScenario::TextThenImage => {
                 content.push(ContentBlock::Text(rmcp::model::TextContent::new(caption)));
-                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
+                    valid_data_b64,
+                    mime_type,
+                )));
             }
             ImageScenario::InvalidBase64ThenImage => {
                 content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
                     "not-base64".to_string(),
                     "image/png".to_string(),
                 )));
-                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
+                    valid_data_b64,
+                    mime_type,
+                )));
             }
             ImageScenario::InvalidImageBytesThenImage => {
                 content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
                     "bm90IGFuIGltYWdl".to_string(),
                     "image/png".to_string(),
                 )));
-                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
+                    valid_data_b64,
+                    mime_type,
+                )));
             }
             ImageScenario::MultipleValidImages => {
                 content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
                     valid_data_b64.clone(),
                     mime_type.clone(),
                 )));
-                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
+                    valid_data_b64,
+                    mime_type,
+                )));
             }
             ImageScenario::ImageThenText => {
-                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(valid_data_b64, mime_type)));
+                content.push(ContentBlock::Image(rmcp::model::ImageContent::new(
+                    valid_data_b64,
+                    mime_type,
+                )));
                 content.push(ContentBlock::Text(rmcp::model::TextContent::new(caption)));
             }
             ImageScenario::TextOnly => {

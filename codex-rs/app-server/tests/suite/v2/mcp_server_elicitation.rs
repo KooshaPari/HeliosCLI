@@ -46,8 +46,8 @@ use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResponse;
 use rmcp::model::CallToolResult;
 use rmcp::model::ContentBlock;
-use rmcp::model::ElicitRequestParams;
 use rmcp::model::CustomRequest;
+use rmcp::model::ElicitRequestParams;
 use rmcp::model::ElicitationAction;
 use rmcp::model::ElicitationSchema;
 use rmcp::model::InitializeRequestParams;
@@ -750,10 +750,8 @@ impl ServerHandler for ElicitationAppsMcpServer {
                     .map_err(|err| rmcp::ErrorData::internal_error(err.to_string(), None))?;
                 let result = match result {
                     rmcp::model::ClientResult::CustomResult(result) => result.0,
-                    rmcp::model::ClientResult::ElicitResult(result) => {
-                        serde_json::to_value(result)
-                            .map_err(|err| rmcp::ErrorData::internal_error(err.to_string(), None))?
-                    }
+                    rmcp::model::ClientResult::ElicitResult(result) => serde_json::to_value(result)
+                        .map_err(|err| rmcp::ErrorData::internal_error(err.to_string(), None))?,
                     result => {
                         return Err(rmcp::ErrorData::internal_error(
                             format!("unexpected OpenAI form response: {result:?}"),
