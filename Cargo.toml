@@ -71,7 +71,7 @@ regex = "1.10"
 tempfile = "3.10"
 walkdir = "2.4"
 proptest = "1.4"
-pyo3 = { version = "0.28", features = ["extension-module", "auto-initialize"] }
+pyo3 = { version = "0.29", features = ["extension-module", "auto-initialize"] }
 toml = "0.8"
 
 # Release optimizations for M1 (moved from crates/harness_runner/Cargo.toml)
