@@ -39,6 +39,12 @@ build:
 test:
     cargo test --workspace
 
+# Compile each Rust benchmark and execute it once without measuring performance.
+# The `Format / etc` CI job runs this from codex-rs/, which has no justfile of
+# its own, so `just` walks up to this one.
+bench-smoke:
+    cargo bench --manifest-path codex-rs/Cargo.toml -p codex-utils-image --bench prompt_images -- --test
+
 # Run clippy with warnings as errors
 lint:
     cargo clippy --workspace --all-targets -- -D warnings
