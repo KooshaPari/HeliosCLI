@@ -25,7 +25,12 @@ use anyhow::Context as _;
 use anyhow::Result;
 use rama_core::Layer;
 use rama_core::Service;
+use rama_core::rt::Executor;
+use rama_core::extensions::Extensions;
+use rama_core::extensions::ExtensionsRef;
 use rama_error::BoxError;
+use rama_error::ErrorExt as _;
+use rama_error::BoxErrorExt as _;
 use rama_core::layer::AddInputExtensionLayer;
 use rama_core::service::service_fn;
 use rama_net::address::HostWithPort;
@@ -42,7 +47,7 @@ use rama_socks5::server::DefaultUdpRelay;
 use rama_socks5::server::udp::RelayRequest;
 use rama_socks5::server::udp::RelayResponse;
 use rama_tcp::TcpStream;
-use rama_tcp::client::Request as TcpRequest;
+use rama_net::client::Request as TcpRequest;
 use rama_tcp::server::TcpListener;
 use std::io;
 use std::net::SocketAddr;
@@ -66,11 +71,11 @@ pub async fn run_socks5(
     environment_id: Option<String>,
     enable_socks5_udp: bool,
 ) -> Result<()> {
-    let listener = TcpListener::build()
-        .bind(addr)
+    let listener = TcpListener::build(Executor::new())
+        .bind_address(addr)
         .await
         // See `http_proxy.rs` for details on why we wrap `BoxError` before converting to anyhow.
-        .map_err(rama_error::extra::OpaqueError::from)
+        .map_err(|err| err.into_opaque_error())
         .map_err(anyhow::Error::from)
         .with_context(|| format!("bind SOCKS5 proxy: {addr}"))?;
 
@@ -92,7 +97,7 @@ pub async fn run_socks5_with_std_listener(
     enable_socks5_udp: bool,
 ) -> Result<()> {
     let listener =
-        TcpListener::try_from(listener).context("convert std listener to SOCKS5 proxy listener")?;
+        TcpListener::try_from_std_tcp_listener(listener, Executor::new()).context("convert std listener to SOCKS5 proxy listener")?;
     run_socks5_with_listener(
         state,
         listener,
@@ -144,7 +149,7 @@ async fn run_socks5_with_listener(
     let socks_connector = DefaultConnector::default()
         .with_connector(policy_tcp_connector)
         .with_service(socks_proxy);
-    let base = Socks5Acceptor::new().with_connector(socks_connector);
+    let base = Socks5Acceptor::new(Executor::new()).with_connector(socks_connector);
 
     if enable_socks5_udp {
         let udp_state = state.clone();
@@ -163,11 +168,11 @@ async fn run_socks5_with_listener(
             }));
         let socks_acceptor = base.with_udp_associator(udp_relay);
         listener
-            .serve(AddInputExtensionLayer::new(state).into_layer(socks_acceptor))
+            .serve(AddInputExtensionLayer::new_arc(state).into_layer(socks_acceptor))
             .await;
     } else {
         listener
-            .serve(AddInputExtensionLayer::new(state).into_layer(base))
+            .serve(AddInputExtensionLayer::new_arc(state).into_layer(base))
             .await;
     }
     Ok(())
@@ -181,8 +186,7 @@ async fn handle_socks5_tcp(
 ) -> Result<EstablishedClientConnection<Socks5TcpConnection, TcpRequest>, BoxError> {
     let app_state = req
         .extensions()
-        .get_ref::<Arc<NetworkProxyState>>()
-        .cloned()
+        .get_arc::<NetworkProxyState>()
         .ok_or_else(|| io::Error::other("missing state"))?;
 
     let host = normalize_host(&req.authority.host.to_string());
@@ -559,7 +563,7 @@ async fn proxy_socks5_tcp(
         } => {
             source.extensions().insert(ConnectorTarget(target));
             source.extensions().insert(mode);
-            source.extensions().insert(mitm);
+            source.extensions().insert_arc(mitm);
             mitm::mitm_stream(source).await.map_err(Into::into)
         }
         Socks5TcpConnection::DetectTls {
@@ -571,7 +575,7 @@ async fn proxy_socks5_tcp(
         } => {
             source.extensions().insert(ConnectorTarget(target.clone()));
             source.extensions().insert(mode);
-            source.extensions().insert(mitm);
+            source.extensions().insert_arc(mitm);
             let (is_tls, source) = mitm::peek_tls_prefix(source)
                 .await
                 .map_err(|err| -> BoxError { err.into() })?;
@@ -805,7 +809,7 @@ mod tests {
     use crate::state::build_config_state;
     use pretty_assertions::assert_eq;
     use rama_core::extensions::Extensions;
-    use rama_core::extensions::Extensions;
+    use rama_core::extensions::ExtensionsRef;
     use rama_net::address::HostWithPort;
     use rama_net::address::SocketAddress;
     use rama_socks5::server::udp::RelayDirection;

@@ -1,3 +1,4 @@
+use rama_core::extensions::ExtensionsRef;
 use crate::policy::is_non_public_ip;
 use crate::state::NetworkProxyState;
 use rama_core::Service;
@@ -97,10 +98,7 @@ impl TargetPolicy {
                 allow_local_binding,
             } => Ok(*allow_local_binding),
             Self::State(state) => state.allow_local_binding().await.map_err(|err| {
-                let err: BoxError = err.into();
-                OpaqueError::from_boxed(err)
-                    .context("read network proxy config")
-                    .into_boxed()
+                BoxError::from(err).context("read network proxy config")
             }),
         }
     }
@@ -125,8 +123,8 @@ mod tests {
             NetworkProxySettings::default(),
         )));
 
-        let request: rama_tcp::client::Request =
-            rama_tcp::client::Request::new(HostWithPort::from(target));
+        let request: rama_net::client::Request =
+            rama_net::client::Request::new(HostWithPort::from(target));
         let err = Service::serve(&connector, request)
             .await
             .expect_err("local target should be rejected");
@@ -150,8 +148,8 @@ mod tests {
             },
         )));
 
-        let request: rama_tcp::client::Request =
-            rama_tcp::client::Request::new(HostWithPort::from(target));
+        let request: rama_net::client::Request =
+            rama_net::client::Request::new(HostWithPort::from(target));
         let result = Service::serve(&connector, request).await;
 
         assert!(result.is_ok(), "local target should be allowed: {result:?}");

@@ -1,3 +1,6 @@
+use rama_net::AuthorityInputExt;
+use rama_net::ProtocolInputExt;
+use rama_net::address::HostWithPort;
 use crate::config::NetworkMode;
 use crate::connect_policy::TargetCheckedTcpConnector;
 use crate::mitm;
@@ -33,6 +36,9 @@ use crate::upstream::proxy_for_connect;
 use anyhow::Context as _;
 use anyhow::Result;
 use codex_utils_rustls_provider::ensure_rustls_crypto_provider;
+use rama_core::extensions::Extensions;
+use rama_core::rt::Executor;
+use rama_core::extensions::ExtensionsRef;
 use rama_core::Layer;
 use rama_core::Service;
 use rama_error::ErrorExt as _;
@@ -56,8 +62,9 @@ use rama_http::layer::remove_header::RemoveResponseHeaderLayer;
 use rama_http::matcher::MethodMatcher;
 use rama_http_backend::client::proxy::layer::HttpProxyConnector;
 use rama_http_backend::server::HttpServer;
-use rama_http_backend::server::layer::upgrade::UpgradeLayer;
-use rama_http_backend::server::layer::upgrade::Upgraded;
+use rama_http::layer::upgrade::UpgradeLayer;
+use rama_http::layer::upgrade::UpgradeResponse;
+use rama_http::layer::upgrade::Upgraded;
 use rama_net::Protocol;
 use rama_net::client::ConnectorService;
 use rama_net::client::EstablishedClientConnection;
@@ -65,7 +72,7 @@ use rama_net::client::ConnectorTarget;
 use rama_core::io::BridgeIo;
 use rama_net::proxy::IoForwardService;
 use rama_net::stream::SocketInfo;
-use rama_tcp::client::Request as TcpRequest;
+use rama_net::client::Request as TcpRequest;
 use rama_tcp::server::TcpListener;
 use rama_tls::TlsAlpn;
 use rama_tls_rustls::client::TlsConnectorLayer;
@@ -94,14 +101,14 @@ pub async fn run_http_proxy(
     policy_decider: Option<Arc<dyn NetworkPolicyDecider>>,
     environment_id: Option<String>,
 ) -> Result<()> {
-    let listener = TcpListener::build()
-        .bind(addr)
+    let listener = TcpListener::build(Executor::new())
+        .bind_address(addr)
         .await
         // Rama's `BoxError` is a `Box<dyn Error + Send + Sync>` without an explicit `'static`
         // lifetime bound, which means it doesn't satisfy `anyhow::Context`'s `StdError` constraint.
         // Wrap it in Rama's `OpaqueError` so we can preserve the original error as a source and
         // still use `anyhow` for chaining.
-        .map_err(rama_error::extra::OpaqueError::from)
+        .map_err(|err| err.into_opaque_error())
         .map_err(anyhow::Error::from)
         .with_context(|| format!("bind HTTP proxy: {addr}"))?;
 
@@ -114,8 +121,12 @@ pub async fn run_http_proxy_with_std_listener(
     policy_decider: Option<Arc<dyn NetworkPolicyDecider>>,
     environment_id: Option<String>,
 ) -> Result<()> {
-    let listener =
-        TcpListener::try_from(listener).context("convert std listener to HTTP proxy listener")?;
+    let socket: rama_net::socket::core::Socket = listener.into();
+    let listener = TcpListener::bind_socket(socket, Executor::new())
+        .await
+        .map_err(|err| err.into_opaque_error())
+        .map_err(anyhow::Error::from)
+        .context("convert std listener to HTTP proxy listener")?;
     run_http_proxy_with_listener(state, listener, policy_decider, environment_id).await
 }
 
@@ -135,9 +146,10 @@ async fn run_http_proxy_with_listener(
     // forces every accepted socket through the HTTP version sniffing pre-read path before proxy
     // request parsing, which can stall some local clients on macOS before CONNECT/absolute-form
     // handling runs at all.
-    let http_service = HttpServer::http1().service(
+    let http_service = HttpServer::new_http1(Executor::new()).service(
         (
             UpgradeLayer::new(
+                Executor::new(),
                 MethodMatcher::CONNECT,
                 service_fn({
                     let policy_decider = policy_decider.clone();
@@ -160,7 +172,7 @@ async fn run_http_proxy_with_listener(
     info!("HTTP proxy listening on {addr}");
 
     listener
-        .serve(AddInputExtensionLayer::new(state).into_layer(http_service))
+        .serve(AddInputExtensionLayer::new_arc(state).into_layer(http_service))
         .await;
     Ok(())
 }
@@ -169,14 +181,16 @@ async fn http_connect_accept(
     policy_decider: Option<Arc<dyn NetworkPolicyDecider>>,
     environment_id: Option<String>,
     mut req: Request,
-) -> Result<(Response, Request), Response> {
+) -> Result<UpgradeResponse<Request, Response>, Response> {
     let app_state = req
         .extensions()
-        .get_ref::<Arc<NetworkProxyState>>()
-        .cloned()
+        .get_arc::<NetworkProxyState>()
         .ok_or_else(|| text_response(StatusCode::INTERNAL_SERVER_ERROR, "missing state"))?;
 
-    let Some(authority) = req.authority() else {
+    let Some(authority) = req
+        .authority()
+        .and_then(|authority| authority.into_host_with_port(req.protocol_default_port()))
+    else {
         warn!("CONNECT missing authority");
         return Err(text_response(StatusCode::BAD_REQUEST, "missing authority"));
     };
@@ -339,13 +353,14 @@ async fn http_connect_accept(
         req.extensions().insert_arc(mitm_state);
     }
 
-    Ok((
-        Response::builder()
+    Ok(UpgradeResponse {
+        response: Response::builder()
             .status(StatusCode::OK)
             .body(Body::empty())
             .unwrap_or_else(|_| Response::new(Body::empty())),
-        req,
-    ))
+        request: req,
+        extensions: Extensions::new(),
+    })
 }
 
 async fn http_connect_proxy(upgraded: Upgraded) -> Result<(), Infallible> {
@@ -371,7 +386,7 @@ async fn http_connect_proxy(upgraded: Upgraded) -> Result<(), Infallible> {
 
 async fn mitm_connect_tunnel<S>(stream: S) -> Result<(), OpaqueError>
 where
-    S: Io + Unpin,
+    S: Io + ExtensionsRef + Unpin,
 {
     let target = stream
         .extensions()
@@ -385,7 +400,7 @@ where
         .get_ref::<NetworkMode>()
         .copied()
         .unwrap_or(NetworkMode::Full);
-    if stream.extensions().get_ref::<Arc<mitm::MitmState>>().is_none() {
+    if stream.extensions().get_arc::<mitm::MitmState>().is_none() {
         return Err(BoxError::from(format!(
             "cannot enable MITM without state (host={host}, port={port})"
         )).into_opaque_error());
@@ -399,7 +414,7 @@ where
 
 async fn forward_connect_tunnel<S>(upgraded: S) -> Result<(), OpaqueError>
 where
-    S: Io + Unpin,
+    S: Io + ExtensionsRef + Unpin,
 {
     let authority = upgraded
         .extensions()
@@ -408,8 +423,7 @@ where
         .ok_or_else(|| OpaqueError::from_static_str("missing forward authority"))?;
     let app_state = upgraded
         .extensions()
-        .get_ref::<Arc<NetworkProxyState>>()
-        .cloned()
+        .get_arc::<NetworkProxyState>()
         .ok_or_else(|| OpaqueError::from_static_str("missing app state"))?;
     let allow_upstream_proxy = match app_state.allow_upstream_proxy().await {
         Ok(allowed) => allowed,
@@ -460,8 +474,9 @@ where
                 "CONNECT upstream dial failed (target={authority}, elapsed_ms={})",
                 connect_started_at.elapsed().as_millis()
             );
-            return Err(OpaqueError::from_boxed(err)
-                .with_context(|| format!("establish CONNECT tunnel to {authority}")));
+            return Err(BoxError::from(err)
+                .with_context(|| format!("establish CONNECT tunnel to {authority}"))
+                .into_opaque_error());
         }
     };
 
@@ -482,8 +497,9 @@ where
                 "CONNECT tunnel forwarding failed (target={authority}, elapsed_ms={})",
                 forward_started_at.elapsed().as_millis()
             );
-            OpaqueError::from_boxed(err.into())
+            BoxError::from(err)
                 .with_context(|| format!("forward CONNECT tunnel to {authority}"))
+                .into_opaque_error()
         })
 }
 
@@ -492,7 +508,7 @@ async fn http_plain_proxy(
     environment_id: Option<String>,
     mut req: Request,
 ) -> Result<Response, Infallible> {
-    let app_state = match req.extensions().get_ref::<Arc<NetworkProxyState>>().cloned() {
+    let app_state = match req.extensions().get_arc::<NetworkProxyState>() {
         Some(state) => state,
         None => {
             error!("missing app state");
@@ -645,7 +661,10 @@ async fn http_plain_proxy(
         };
     }
 
-    let Some(authority) = req.authority() else {
+    let Some(authority) = req
+        .authority()
+        .and_then(|authority| authority.into_host_with_port(req.protocol_default_port()))
+    else {
         warn!("missing host");
         return Ok(text_response(StatusCode::BAD_REQUEST, "missing host"));
     };
@@ -840,7 +859,7 @@ async fn proxy_via_unix_socket(req: Request, socket_path: &str) -> Result<Respon
         let path = parts
             .uri
             .path_and_query()
-            .map(rama_http::uri::PathAndQuery::as_str)
+            .map(rama_net::uri::PathAndQuery::as_str)
             .unwrap_or("/");
         parts.uri = path
             .parse()
@@ -859,7 +878,7 @@ async fn proxy_via_unix_socket(req: Request, socket_path: &str) -> Result<Respon
     }
 }
 
-fn client_addr<T>(input: &T) -> Option<String> {
+fn client_addr<T: ExtensionsRef>(input: &T) -> Option<String> {
     input
         .extensions()
         .get_ref::<SocketInfo>()
@@ -868,7 +887,7 @@ fn client_addr<T>(input: &T) -> Option<String> {
 
 fn validate_absolute_form_host_header(
     req: &Request,
-    authority: &HostWithOptPort,
+    authority: &HostWithPort,
 ) -> Result<(), &'static str> {
     if req.uri().scheme_str().is_none() {
         return Ok(());
@@ -886,14 +905,17 @@ fn validate_absolute_form_host_header(
         return Err("Host header does not match request target");
     }
 
-    if let Some(host_port) = host_header.0.port {
-        if Some(host_port) != authority.port {
+    // HostWithOptPort's port is an OptPort in 0.3.
+    if let Some(host_port) = host_header.0.port.as_u16() {
+        if host_port != authority.port {
             return Err("Host header does not match request target");
         }
         return Ok(());
     }
 
-    if !authority.has_default_port_for(None) {
+    // No explicit port in the Host header: the target must be on the protocol
+    // default, which is the same fallback used to resolve the authority.
+    if Some(authority.port) != req.protocol_default_port() {
         return Err("Host header does not match request target");
     }
 

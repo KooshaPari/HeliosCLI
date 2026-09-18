@@ -391,8 +391,8 @@ fn hook_matches(hook: &MitmHook, req: &Request) -> bool {
         return false;
     }
 
-    let path = req.uri().path();
-    if !path_matches(&hook.matcher.path_prefixes, path) {
+    let path = req.uri().path_or_root();
+    if !path_matches(&hook.matcher.path_prefixes, &path) {
         return false;
     }
 
@@ -408,7 +408,7 @@ fn query_matches(query_constraints: &[QueryConstraint], req: &Request) -> bool {
         return true;
     }
 
-    let actual_query = req.uri().query().unwrap_or_default();
+    let actual_query = req.uri().query_or_empty();
     let mut actual_values: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (name, value) in form_urlencoded::parse(actual_query.as_bytes()) {
         actual_values

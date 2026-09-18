@@ -17,6 +17,8 @@ use anyhow::Context as _;
 use anyhow::Result;
 use anyhow::anyhow;
 use codex_utils_rustls_provider::ensure_rustls_crypto_provider;
+use rama_core::extensions::ExtensionsRef;
+use rama_net::AuthorityInputExt;
 use rama_core::Layer;
 use rama_core::Service;
 use rama_core::bytes::Bytes;
@@ -41,7 +43,6 @@ use rama_http::layer::remove_header::RemoveResponseHeaderLayer;
 use rama_http_backend::server::HttpServer;
 use rama_net::client::ConnectorTarget;
 use rama_net::stream::SocketInfo;
-use rama_tls_rustls::server::TlsAcceptorData;
 use rama_tls_rustls::server::TlsAcceptorLayer;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -99,7 +100,7 @@ const TLS_PREFIX_FIRST_BYTE_TIMEOUT: Duration = Duration::from_millis(250);
 /// interception. Every byte read is replayed through `TlsPeekStream`.
 pub(crate) async fn peek_tls_prefix<S>(mut stream: S) -> Result<(bool, PrefixedIo<StackReader<TLS_PREFIX_LEN>, S>)>
 where
-    S: Io + Unpin,
+    S: Io + ExtensionsRef + Unpin,
 {
     let mut peek_buf = [0_u8; TLS_PREFIX_LEN];
     let mut bytes_read =
@@ -180,8 +181,8 @@ impl MitmState {
         })
     }
 
-    fn tls_acceptor_data_for_host(&self, host: &str) -> Result<TlsAcceptorData> {
-        self.ca.tls_acceptor_data_for_host(host)
+    fn tls_server_config_for_host(&self, host: &str) -> Result<rama_tls::server::TlsServerConfig> {
+        self.ca.tls_server_config_for_host(host)
     }
 
     pub(crate) fn inspect_enabled(&self) -> bool {
@@ -196,17 +197,15 @@ impl MitmState {
 /// Terminate a raw client stream with a generated leaf cert and proxy inner HTTPS traffic.
 pub(crate) async fn mitm_stream<S>(stream: S) -> Result<()>
 where
-    S: Io + Unpin,
+    S: Io + ExtensionsRef + Unpin,
 {
     let mitm = stream
         .extensions()
-        .get_ref::<Arc<MitmState>>()
-        .cloned()
+        .get_arc::<MitmState>()
         .context("missing MITM state")?;
     let app_state = stream
         .extensions()
-        .get_ref::<Arc<NetworkProxyState>>()
-        .cloned()
+        .get_arc::<NetworkProxyState>()
         .context("missing app state")?;
     let target = stream
         .extensions()
@@ -216,7 +215,7 @@ where
         .clone();
     let target_host = normalize_host(&target.host.to_string());
     let target_port = target.port;
-    let acceptor_data = mitm.tls_acceptor_data_for_host(&target_host)?;
+    let server_config = mitm.tls_server_config_for_host(&target_host)?;
     let mode = stream
         .extensions()
         .get_ref::<NetworkMode>()
@@ -232,11 +231,7 @@ where
         mitm,
     });
 
-    let executor = stream
-        .extensions()
-        .get_ref::<Executor>()
-        .cloned()
-        .unwrap_or_default();
+    let executor = Executor::new();
 
     let http_service = HttpServer::auto(executor).service(
         (
@@ -252,7 +247,7 @@ where
             })),
     );
 
-    let https_service = TlsAcceptorLayer::new(acceptor_data)
+    let https_service = TlsAcceptorLayer::new(server_config)
         .with_store_client_hello(true)
         .into_layer(http_service);
 
@@ -590,7 +585,7 @@ fn extract_request_host(req: &Request) -> Option<String> {
         .get(HOST)
         .and_then(|v| v.to_str().ok())
         .map(ToString::to_string)
-        .or_else(|| req.uri().authority().map(|a| a.as_str().to_string()))
+        .or_else(|| req.authority().map(|authority| authority.to_string()))
 }
 
 fn authority_header_value(host: &str, port: u16) -> String {
@@ -614,14 +609,15 @@ fn build_https_uri(authority: &str, path: &str) -> Result<Uri> {
 }
 
 fn path_and_query(uri: &Uri) -> String {
-    uri.path_and_query()
-        .map(rama_http::uri::PathAndQuery::as_str)
-        .unwrap_or("/")
-        .to_string()
+    let path = uri.path_or_root();
+    match uri.query() {
+        Some(query) => format!("{path}?{query}"),
+        None => path.into_owned(),
+    }
 }
 
 fn path_for_log(uri: &Uri) -> String {
-    uri.path().to_string()
+    uri.path_or_root().into_owned()
 }
 
 #[cfg(test)]
