@@ -78,10 +78,16 @@ pull_request_rules:
     # NOTE: no `teams:` key here. KooshaPari is a user account, not an
     # organization, so `phenotype/core` (and any other team slug) can never
     # resolve and the rule fails with "Invalid requested teams".
+    # NOTE: the `author!=KooshaPari` guard is required. GitHub rejects a review
+    # request when the requested reviewer is the pull request author, so
+    # without it this rule fails with "Can't request a review from the pull
+    # request author" on every owner-authored PR and the
+    # `Rule: Request review from team (request_reviews)` check stays red.
     - name: Request review from team
       conditions:
           - -closed
           - -draft
+          - author!=KooshaPari
       actions:
           request_reviews:
               users:
