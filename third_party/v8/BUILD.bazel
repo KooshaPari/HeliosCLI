@@ -140,7 +140,14 @@ V8_STATIC_LIBRARY_FEATURES = [
 
 cc_library(
     name = "rusty_v8_custom_libcxx_headers",
-    defines = select({
+    # libc++'s locale support header (__locale_dir/support/linux.h) calls the
+    # glibc XSI extensions strxfrm_l/iswctype_l/iswspace_l/iswprint_l, and glibc
+    # only declares those under __USE_XOPEN2K8. Chromium defines _GNU_SOURCE
+    # globally on Linux, so every V8/ICU object built against the custom libc++
+    # headers must see it too; `defines` here propagates to all dependents.
+    # Without it the v8-canary build dies with "use of undeclared identifier
+    # 'strxfrm_l'" while compiling V8's own icu/torque objects.
+    defines = ["_GNU_SOURCE"] + select({
         ":platform_aarch64_unknown_linux_musl": ["ANDROID_HOST_MUSL"],
         ":platform_x86_64_unknown_linux_musl": ["ANDROID_HOST_MUSL"],
         "//conditions:default": [],
