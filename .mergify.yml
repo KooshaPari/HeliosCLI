@@ -75,14 +75,15 @@ pull_request_rules:
               method: squash
 
     # Add reviewers based on changed paths
+    # NOTE: no `teams:` key here. KooshaPari is a user account, not an
+    # organization, so `phenotype/core` (and any other team slug) can never
+    # resolve and the rule fails with "Invalid requested teams".
     - name: Request review from team
       conditions:
           - -closed
           - -draft
       actions:
           request_reviews:
-              teams:
-                  - phenotype/core
               users:
                   - KooshaPari
 

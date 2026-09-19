@@ -135,7 +135,6 @@ where
     }
     let mut peek = StackReader::new(peek_buf);
     peek.skip(offset);
-    eprintln!("JCODE_DBG peek bytes_read={bytes_read} is_tls={is_tls}");
     Ok((is_tls, PrefixedIo::new(peek, stream)))
 }
 

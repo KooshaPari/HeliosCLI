@@ -379,7 +379,6 @@ async fn http_connect_proxy(upgraded: Upgraded) -> Result<(), Infallible> {
         .get_ref::<ConnectMitmMode>()
         .copied()
         .unwrap_or(ConnectMitmMode::Disabled);
-    eprintln!("JCODE_DBG connect mode={connect_mitm_mode:?}");
     let result: Result<(), OpaqueError> = match connect_mitm_mode {
         ConnectMitmMode::Disabled => forward_connect_tunnel(upgraded).await,
         ConnectMitmMode::Enabled => mitm_connect_tunnel(upgraded).await,
@@ -389,10 +388,6 @@ async fn http_connect_proxy(upgraded: Upgraded) -> Result<(), Infallible> {
             Err(err) => Err(BoxError::from(format!("detect TLS: {err:#}")).into_opaque_error()),
         },
     };
-    eprintln!(
-        "JCODE_DBG tunnel result={:?}",
-        result.as_ref().err().map(|e| format!("{e:#}"))
-    );
     if let Err(err) = result {
         warn!("CONNECT tunnel error: {err}");
     }
@@ -437,7 +432,6 @@ where
         .get_ref::<ConnectorTarget>()
         .map(|target| target.0.clone())
         .ok_or_else(|| OpaqueError::from_static_str("missing forward authority"))?;
-    eprintln!("JCODE_DBG fwd authority={authority}");
     let app_state = upgraded
         .extensions()
         .get_arc::<NetworkProxyState>()
@@ -477,7 +471,6 @@ where
     let proxy_connector = HttpProxyConnector::optional(TargetCheckedTcpConnector::new(app_state));
     let connector = TlsConnectorLayer::tunnel(None).into_layer(proxy_connector);
     info!("CONNECT upstream dial started (target={authority})");
-    eprintln!("JCODE_DBG fwd dial start");
     let connect_started_at = Instant::now();
     let EstablishedClientConnection { conn: target, .. } = match connector.connect(req).await {
         Ok(connection) => {
@@ -498,7 +491,6 @@ where
         }
     };
 
-    eprintln!("JCODE_DBG fwd dial ok, forwarding");
     let proxy_req = BridgeIo(upgraded, target);
     info!("CONNECT tunnel forwarding started (target={authority})");
     let forward_started_at = Instant::now();
