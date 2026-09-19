@@ -1053,21 +1053,5 @@ mod tests {
             HookEvaluation::NoHooksForHost
         );
     }
-
-    #[test]
-    fn jcode_tmp_probe_uri_shape() {
-        let r = Request::builder()
-            .method(Method::POST)
-            .uri("/repos/[draft]/codex/issues?state=op*")
-            .header("x-github-api-version", "2022-11-28[preview]")
-            .body(Body::empty())
-            .unwrap();
-        println!("JCODE_TMP_PROBE path={:?}", r.uri().path());
-        println!("JCODE_TMP_PROBE query={:?}", r.uri().query());
-        println!("JCODE_TMP_PROBE as_str={:?}", r.uri().as_str());
-        println!(
-            "JCODE_TMP_PROBE header={:?}",
-            r.headers().get("x-github-api-version")
-        );
-    }
 }
+
