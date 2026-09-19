@@ -1,6 +1,3 @@
-use rama_net::AuthorityInputExt;
-use rama_net::ProtocolInputExt;
-use rama_net::address::HostWithPort;
 use crate::config::NetworkMode;
 use crate::connect_policy::TargetCheckedTcpConnector;
 use crate::mitm;
@@ -36,18 +33,18 @@ use crate::upstream::proxy_for_connect;
 use anyhow::Context as _;
 use anyhow::Result;
 use codex_utils_rustls_provider::ensure_rustls_crypto_provider;
-use rama_core::extensions::Extensions;
-use rama_core::rt::Executor;
-use rama_core::extensions::ExtensionsRef;
 use rama_core::Layer;
 use rama_core::Service;
-use rama_error::ErrorExt as _;
-use rama_error::BoxError;
-use rama_error::BoxErrorExt as _;
-use rama_error::extra::OpaqueError;
-use rama_core::layer::AddInputExtensionLayer;
-use rama_core::service::service_fn;
+use rama_core::extensions::Extensions;
+use rama_core::extensions::ExtensionsRef;
+use rama_core::io::BridgeIo;
 use rama_core::io::Io;
+use rama_core::layer::AddInputExtensionLayer;
+use rama_core::rt::Executor;
+use rama_core::service::service_fn;
+use rama_error::BoxError;
+use rama_error::ErrorExt as _;
+use rama_error::extra::OpaqueError;
 use rama_http::Body;
 use rama_http::HeaderMap;
 use rama_http::HeaderName;
@@ -59,20 +56,22 @@ use rama_http::header;
 use rama_http::headers::HeaderMapExt;
 use rama_http::headers::Host;
 use rama_http::layer::remove_header::RemoveResponseHeaderLayer;
-use rama_http::matcher::MethodMatcher;
-use rama_http_backend::client::proxy::layer::HttpProxyConnector;
-use rama_http_backend::server::HttpServer;
 use rama_http::layer::upgrade::UpgradeLayer;
 use rama_http::layer::upgrade::UpgradeResponse;
 use rama_http::layer::upgrade::Upgraded;
+use rama_http::matcher::MethodMatcher;
+use rama_http_backend::client::proxy::layer::HttpProxyConnector;
+use rama_http_backend::server::HttpServer;
+use rama_net::AuthorityInputExt;
 use rama_net::Protocol;
+use rama_net::ProtocolInputExt;
+use rama_net::address::HostWithPort;
 use rama_net::client::ConnectorService;
-use rama_net::client::EstablishedClientConnection;
 use rama_net::client::ConnectorTarget;
-use rama_core::io::BridgeIo;
+use rama_net::client::EstablishedClientConnection;
+use rama_net::client::Request as TcpRequest;
 use rama_net::proxy::IoForwardService;
 use rama_net::stream::SocketInfo;
-use rama_net::client::Request as TcpRequest;
 use rama_tcp::server::TcpListener;
 use rama_tls::TlsAlpn;
 use rama_tls_rustls::client::TlsConnectorLayer;
@@ -180,7 +179,7 @@ async fn run_http_proxy_with_listener(
 async fn http_connect_accept(
     policy_decider: Option<Arc<dyn NetworkPolicyDecider>>,
     environment_id: Option<String>,
-    mut req: Request,
+    req: Request,
 ) -> Result<UpgradeResponse<Request, Response>, Response> {
     let app_state = req
         .extensions()
@@ -344,12 +343,23 @@ async fn http_connect_accept(
         return Err(blocked_text_with_details(REASON_MITM_REQUIRED, &details));
     }
 
+    // rama 0.3's http upgrade service only carries `UpgradeResponse::extensions`
+    // onto the upgraded stream; the request's own extensions are not copied
+    // across. The CONNECT handler reads `ConnectorTarget`, `ConnectMitmMode` and
+    // `MitmState` from the upgraded stream, so populate both stores: the upgrade
+    // response for the handler, and the request for callers that inspect it.
+    let upgrade_extensions = Extensions::new();
+    upgrade_extensions.insert(ConnectorTarget(authority.clone()));
+    upgrade_extensions.insert(connect_mitm_mode);
+    upgrade_extensions.insert(mode);
+
     req.extensions().insert(ConnectorTarget(authority));
     req.extensions().insert(connect_mitm_mode);
     req.extensions().insert(mode);
     if connect_mitm_mode != ConnectMitmMode::Disabled
         && let Some(mitm_state) = mitm_state
     {
+        upgrade_extensions.insert_arc(mitm_state.clone());
         req.extensions().insert_arc(mitm_state);
     }
 
@@ -359,7 +369,7 @@ async fn http_connect_accept(
             .body(Body::empty())
             .unwrap_or_else(|_| Response::new(Body::empty())),
         request: req,
-        extensions: Extensions::new(),
+        extensions: upgrade_extensions,
     })
 }
 
@@ -369,6 +379,7 @@ async fn http_connect_proxy(upgraded: Upgraded) -> Result<(), Infallible> {
         .get_ref::<ConnectMitmMode>()
         .copied()
         .unwrap_or(ConnectMitmMode::Disabled);
+    eprintln!("JCODE_DBG connect mode={connect_mitm_mode:?}");
     let result: Result<(), OpaqueError> = match connect_mitm_mode {
         ConnectMitmMode::Disabled => forward_connect_tunnel(upgraded).await,
         ConnectMitmMode::Enabled => mitm_connect_tunnel(upgraded).await,
@@ -378,6 +389,10 @@ async fn http_connect_proxy(upgraded: Upgraded) -> Result<(), Infallible> {
             Err(err) => Err(BoxError::from(format!("detect TLS: {err:#}")).into_opaque_error()),
         },
     };
+    eprintln!(
+        "JCODE_DBG tunnel result={:?}",
+        result.as_ref().err().map(|e| format!("{e:#}"))
+    );
     if let Err(err) = result {
         warn!("CONNECT tunnel error: {err}");
     }
@@ -403,7 +418,8 @@ where
     if stream.extensions().get_arc::<mitm::MitmState>().is_none() {
         return Err(BoxError::from(format!(
             "cannot enable MITM without state (host={host}, port={port})"
-        )).into_opaque_error());
+        ))
+        .into_opaque_error());
     }
 
     info!("CONNECT MITM enabled (host={host}, port={port}, mode={mode:?})");
@@ -421,6 +437,7 @@ where
         .get_ref::<ConnectorTarget>()
         .map(|target| target.0.clone())
         .ok_or_else(|| OpaqueError::from_static_str("missing forward authority"))?;
+    eprintln!("JCODE_DBG fwd authority={authority}");
     let app_state = upgraded
         .extensions()
         .get_arc::<NetworkProxyState>()
@@ -448,7 +465,7 @@ where
         ),
     }
 
-    let mut extensions = upgraded.extensions().clone();
+    let extensions = upgraded.extensions().clone();
     if let Some(proxy) = proxy {
         extensions.insert(proxy);
     }
@@ -460,6 +477,7 @@ where
     let proxy_connector = HttpProxyConnector::optional(TargetCheckedTcpConnector::new(app_state));
     let connector = TlsConnectorLayer::tunnel(None).into_layer(proxy_connector);
     info!("CONNECT upstream dial started (target={authority})");
+    eprintln!("JCODE_DBG fwd dial start");
     let connect_started_at = Instant::now();
     let EstablishedClientConnection { conn: target, .. } = match connector.connect(req).await {
         Ok(connection) => {
@@ -480,6 +498,7 @@ where
         }
     };
 
+    eprintln!("JCODE_DBG fwd dial ok, forwarding");
     let proxy_req = BridgeIo(upgraded, target);
     info!("CONNECT tunnel forwarding started (target={authority})");
     let forward_started_at = Instant::now();
@@ -1119,7 +1138,7 @@ mod tests {
         let state = Arc::new(network_proxy_state_for_policy(policy));
         state.set_network_mode(NetworkMode::Limited).await.unwrap();
 
-        let mut req = Request::builder()
+        let req = Request::builder()
             .method(Method::CONNECT)
             .uri("https://example.com:443")
             .header("host", "example.com:443")
@@ -1151,7 +1170,7 @@ mod tests {
         };
         let state = Arc::new(network_proxy_state_for_policy(policy));
 
-        let mut req = Request::builder()
+        let req = Request::builder()
             .method(Method::CONNECT)
             .uri("https://example.com:443")
             .header("host", "example.com:443")
@@ -1159,7 +1178,7 @@ mod tests {
             .unwrap();
         req.extensions().insert_arc(state);
 
-        let (response, _request) = http_connect_accept(
+        let UpgradeResponse { response, .. } = http_connect_accept(
             /*policy_decider*/ None, /*environment_id*/ None, req,
         )
         .await
@@ -1183,7 +1202,7 @@ mod tests {
             }
         });
 
-        let mut req = Request::builder()
+        let req = Request::builder()
             .method(Method::CONNECT)
             .uri("https://example.com:443")
             .header("host", "example.com:443")
@@ -1191,7 +1210,7 @@ mod tests {
             .unwrap();
         req.extensions().insert_arc(state);
 
-        let (response, _request) =
+        let UpgradeResponse { response, .. } =
             http_connect_accept(Some(decider), Some("remote".to_string()), req)
                 .await
                 .unwrap();
@@ -1218,7 +1237,7 @@ mod tests {
         let mut env = HashMap::from([("GH_TOKEN".to_string(), "ghp-real".to_string())]);
         state.virtualize_child_credentials(&mut env);
 
-        let mut req = Request::builder()
+        let req = Request::builder()
             .method(Method::CONNECT)
             .uri("https://github.com:22")
             .header("host", "github.com:22")
@@ -1226,7 +1245,9 @@ mod tests {
             .unwrap();
         req.extensions().insert_arc(state);
 
-        let (response, request) = http_connect_accept(
+        let UpgradeResponse {
+            response, request, ..
+        } = http_connect_accept(
             /*policy_decider*/ None, /*environment_id*/ None, req,
         )
         .await
@@ -1317,7 +1338,7 @@ mod tests {
         policy.set_allowed_domains(vec!["api.github.com".to_string()]);
         let state = Arc::new(network_proxy_state_for_policy(policy));
 
-        let mut req = Request::builder()
+        let req = Request::builder()
             .method(Method::CONNECT)
             .uri("https://api.github.com:8443")
             .header("host", "api.github.com:8443")
@@ -1430,7 +1451,7 @@ mod tests {
             .await
             .expect("network mode should update");
 
-        let mut req = Request::builder()
+        let req = Request::builder()
             .method(Method::POST)
             .uri("http://example.com")
             .header("x-unix-socket", "/tmp/test.sock")
@@ -1457,7 +1478,7 @@ mod tests {
             NetworkProxySettings::default(),
         ));
 
-        let mut req = Request::builder()
+        let req = Request::builder()
             .method(Method::GET)
             .uri("http://example.com")
             .header("x-unix-socket", "/tmp/test.sock")
@@ -1517,7 +1538,7 @@ mod tests {
         };
         let state = Arc::new(network_proxy_state_for_policy(policy));
 
-        let mut req = Request::builder()
+        let req = Request::builder()
             .method(Method::CONNECT)
             .uri("https://api.openai.com:443")
             .header("host", "api.openai.com:443")
@@ -1542,7 +1563,7 @@ mod tests {
         let state = Arc::new(network_proxy_state_for_policy(
             NetworkProxySettings::default(),
         ));
-        let mut req = Request::builder()
+        let req = Request::builder()
             .method(Method::GET)
             .uri("http://raw.githubusercontent.com/openai/codex/main/README.md")
             .header(header::HOST, "api.github.com")
@@ -1567,7 +1588,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            validate_absolute_form_host_header(&req, &req.authority().unwrap()),
+            validate_absolute_form_host_header(
+                &req,
+                &req.authority()
+                    .unwrap()
+                    .into_host_with_port(req.protocol_default_port())
+                    .unwrap()
+            ),
             Ok(())
         );
     }
@@ -1582,7 +1609,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            validate_absolute_form_host_header(&req, &req.authority().unwrap()),
+            validate_absolute_form_host_header(
+                &req,
+                &req.authority()
+                    .unwrap()
+                    .into_host_with_port(req.protocol_default_port())
+                    .unwrap()
+            ),
             Err("Host header does not match request target")
         );
     }
@@ -1597,7 +1630,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            validate_absolute_form_host_header(&req, &req.authority().unwrap()),
+            validate_absolute_form_host_header(
+                &req,
+                &req.authority()
+                    .unwrap()
+                    .into_host_with_port(req.protocol_default_port())
+                    .unwrap()
+            ),
             Err("Host header does not match request target")
         );
     }

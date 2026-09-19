@@ -11,6 +11,7 @@ use globset::GlobMatcher;
 use rama_http::HeaderValue;
 use rama_http::Request;
 use rama_http::header::HeaderName;
+use rama_net::uri::PathRef;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -481,7 +482,15 @@ fn compile_path_matchers(path_prefixes: &[String]) -> Result<Vec<PathMatcher>> {
                     if prefix.is_empty() {
                         return Err(anyhow!("path_prefixes must not contain empty entries"));
                     }
-                    Ok(PathMatcher::Prefix(prefix.to_string()))
+                    // `Uri::path_or_root()` renders the percent-encoded path:
+                    // rama 0.3 switched from the `http` crate's `Uri` (whose
+                    // `path()` returned the raw, as-sent bytes) to its own
+                    // `rama_net::uri::Uri`. Normalize the configured literal
+                    // prefix through the same encoder so a prefix such as
+                    // `/repos/[draft]/` still matches a request whose path
+                    // carries those same bytes.
+                    let encoded = PathRef::from_raw_str(prefix).as_encoded_str().into_owned();
+                    Ok(PathMatcher::Prefix(encoded))
                 }
                 MatcherPattern::Glob(glob_pattern) => Ok(PathMatcher::Glob(compile_glob_matcher(
                     glob_pattern,
@@ -1042,6 +1051,23 @@ mod tests {
         assert_eq!(
             evaluate_mitm_hooks(&MitmHooksByHost::new(), "api.github.com", &req),
             HookEvaluation::NoHooksForHost
+        );
+    }
+
+    #[test]
+    fn jcode_tmp_probe_uri_shape() {
+        let r = Request::builder()
+            .method(Method::POST)
+            .uri("/repos/[draft]/codex/issues?state=op*")
+            .header("x-github-api-version", "2022-11-28[preview]")
+            .body(Body::empty())
+            .unwrap();
+        println!("JCODE_TMP_PROBE path={:?}", r.uri().path());
+        println!("JCODE_TMP_PROBE query={:?}", r.uri().query());
+        println!("JCODE_TMP_PROBE as_str={:?}", r.uri().as_str());
+        println!(
+            "JCODE_TMP_PROBE header={:?}",
+            r.headers().get("x-github-api-version")
         );
     }
 }

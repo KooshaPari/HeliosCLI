@@ -17,18 +17,17 @@ use anyhow::Context as _;
 use anyhow::Result;
 use anyhow::anyhow;
 use codex_utils_rustls_provider::ensure_rustls_crypto_provider;
-use rama_core::extensions::ExtensionsRef;
-use rama_net::AuthorityInputExt;
 use rama_core::Layer;
 use rama_core::Service;
 use rama_core::bytes::Bytes;
-use rama_error::BoxError;
+use rama_core::extensions::ExtensionsRef;
 use rama_core::futures::stream::Stream as FuturesStream;
-use rama_core::rt::Executor;
-use rama_core::service::service_fn;
+use rama_core::io::Io;
 use rama_core::io::PrefixedIo;
 use rama_core::io::StackReader;
-use rama_core::io::Io;
+use rama_core::rt::Executor;
+use rama_core::service::service_fn;
+use rama_error::BoxError;
 use rama_http::Body;
 use rama_http::BodyDataStream;
 use rama_http::HeaderMap;
@@ -36,13 +35,14 @@ use rama_http::HeaderValue;
 use rama_http::Request;
 use rama_http::Response;
 use rama_http::StatusCode;
-use rama_net::uri::Uri;
 use rama_http::header::HOST;
 use rama_http::layer::remove_header::RemoveRequestHeaderLayer;
 use rama_http::layer::remove_header::RemoveResponseHeaderLayer;
 use rama_http_backend::server::HttpServer;
+use rama_net::AuthorityInputExt;
 use rama_net::client::ConnectorTarget;
 use rama_net::stream::SocketInfo;
+use rama_net::uri::Uri;
 use rama_tls_rustls::server::TlsAcceptorLayer;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -98,7 +98,9 @@ const TLS_PREFIX_FIRST_BYTE_TIMEOUT: Duration = Duration::from_millis(250);
 /// The first-byte timeout preserves server-first protocols. Once the client starts a possible TLS
 /// prefix, all five record-header bytes are accumulated so fragmented handshakes cannot bypass
 /// interception. Every byte read is replayed through `TlsPeekStream`.
-pub(crate) async fn peek_tls_prefix<S>(mut stream: S) -> Result<(bool, PrefixedIo<StackReader<TLS_PREFIX_LEN>, S>)>
+pub(crate) async fn peek_tls_prefix<S>(
+    mut stream: S,
+) -> Result<(bool, PrefixedIo<StackReader<TLS_PREFIX_LEN>, S>)>
 where
     S: Io + ExtensionsRef + Unpin,
 {
@@ -133,6 +135,7 @@ where
     }
     let mut peek = StackReader::new(peek_buf);
     peek.skip(offset);
+    eprintln!("JCODE_DBG peek bytes_read={bytes_read} is_tls={is_tls}");
     Ok((is_tls, PrefixedIo::new(peek, stream)))
 }
 

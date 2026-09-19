@@ -3,10 +3,12 @@ use anyhow::Result;
 use anyhow::anyhow;
 use base64::Engine as _;
 use codex_utils_home_dir::find_codex_home;
-use rama_tls::ApplicationProtocol;
 use rama_crypto::pki_types::CertificateDer;
 use rama_crypto::pki_types::PrivateKeyDer;
 use rama_crypto::pki_types::pem::PemObject;
+use rama_tls::server::ServerAuthData;
+use rama_tls::server::TlsServerConfig;
+use rama_tls_rustls::dep::rustls;
 use rcgen::BasicConstraints;
 use rcgen::CertificateParams;
 use rcgen::DistinguishedName;
@@ -18,9 +20,6 @@ use rcgen::KeyPair;
 use rcgen::KeyUsagePurpose;
 use rcgen::PKCS_ECDSA_P256_SHA256;
 use rcgen::SanType;
-use rama_tls_rustls::dep::rustls;
-use rama_tls::server::ServerAuthData;
-use rama_tls::server::TlsServerConfig;
 use sha2::Digest as _;
 use sha2::Sha256;
 use std::collections::HashMap;
@@ -812,7 +811,7 @@ mod tests {
         ensure_rustls_crypto_provider();
         let dir = tempdir().unwrap();
         let ca = ManagedMitmCa::create(dir.path()).unwrap();
-        ca.tls_acceptor_data_for_host("example.com").unwrap();
+        ca.tls_server_config_for_host("example.com").unwrap();
         let mut persisted_files = fs::read_dir(dir.path())
             .unwrap()
             .map(|entry| entry.unwrap().path())

@@ -1,10 +1,10 @@
-use rama_core::extensions::ExtensionsRef;
 use crate::policy::is_non_public_ip;
 use crate::state::NetworkProxyState;
+use rama_core::Layer;
 use rama_core::Service;
+use rama_dns::client::DnsConnectorLayer;
 use rama_error::BoxError;
 use rama_error::ErrorExt as _;
-use rama_error::extra::OpaqueError;
 use rama_net::address::ProxyAddress;
 use rama_net::client::EstablishedClientConnection;
 use rama_tcp::TcpStream;
@@ -48,14 +48,29 @@ where
     type Error = BoxError;
 
     async fn serve(&self, input: Input) -> Result<Self::Output, Self::Error> {
+        // rama 0.3 removed domain-name resolution from `TcpConnector` itself:
+        // the transport now only accepts an IP target and expects an upstream
+        // connector layer to stamp a resolved `ConnectorTargetStream` into the
+        // extensions. Without this layer every non-IP target fails with
+        // "tcp connector target host is not an IP address".
+        //
+        // `DnsConnectorLayer::new()` uses the process-global resolver, which
+        // defaults to the platform-native one (Windows DNS API on Windows).
+        // The `hickory` feature is deliberately left off so no advisory-bearing
+        // DNS client is linked in.
         if input.extensions().get_ref::<ProxyAddress>().is_some() {
-            return TcpConnector::new().serve(input).await;
+            return DnsConnectorLayer::new()
+                .into_layer(TcpConnector::new())
+                .serve(input)
+                .await;
         }
 
-        TcpConnector::new()
-            .with_connector(TargetCheckedStreamConnector {
-                policy: self.policy.clone(),
-            })
+        DnsConnectorLayer::new()
+            .into_layer(
+                TcpConnector::new().with_connector(TargetCheckedStreamConnector {
+                    policy: self.policy.clone(),
+                }),
+            )
             .serve(input)
             .await
     }
@@ -97,9 +112,10 @@ impl TargetPolicy {
             Self::Config {
                 allow_local_binding,
             } => Ok(*allow_local_binding),
-            Self::State(state) => state.allow_local_binding().await.map_err(|err| {
-                BoxError::from(err).context("read network proxy config")
-            }),
+            Self::State(state) => state
+                .allow_local_binding()
+                .await
+                .map_err(|err| BoxError::from(err).context("read network proxy config")),
         }
     }
 }

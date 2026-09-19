@@ -1,14 +1,14 @@
 use crate::connect_policy::TargetCheckedTcpConnector;
 use crate::state::NetworkProxyState;
 use codex_utils_rustls_provider::ensure_rustls_crypto_provider;
-use rama_core::rt::Executor;
 use rama_core::Layer;
 use rama_core::Service;
+use rama_core::extensions::ExtensionsRef;
+use rama_core::rt::Executor;
+use rama_core::service::BoxService;
 use rama_error::BoxError;
-use rama_error::BoxErrorExt as _;
 use rama_error::ErrorExt as _;
 use rama_error::extra::OpaqueError;
-use rama_core::service::BoxService;
 use rama_http::Body;
 use rama_http::Request;
 use rama_http::Response;
@@ -16,10 +16,9 @@ use rama_http::layer::version_adapter::RequestVersionAdapter;
 use rama_http_backend::client::HttpClientService;
 use rama_http_backend::client::HttpConnector;
 use rama_http_backend::client::proxy::layer::HttpProxyConnectorLayer;
-use rama_net::address::ProxyAddress;
 use rama_net::AuthorityInputExt;
 use rama_net::ProtocolInputExt;
-use rama_core::extensions::ExtensionsRef;
+use rama_net::address::ProxyAddress;
 use rama_net::client::EstablishedClientConnection;
 use rama_tls::client::TlsClientConfig;
 use rama_tls_rustls::client::RustlsClientConfigExt;
@@ -169,14 +168,16 @@ impl Service<Request<Body>> for UpstreamClient {
     type Output = Response;
     type Error = OpaqueError;
 
-    async fn serve(&self, mut req: Request<Body>) -> Result<Self::Output, Self::Error> {
+    async fn serve(&self, req: Request<Body>) -> Result<Self::Output, Self::Error> {
         let authority = req
             .authority()
             .and_then(|authority| authority.into_host_with_port(None))
             .map(|authority| authority.to_string())
             .unwrap_or_else(|| "<unknown>".to_string());
         let proxy = self.proxy_config.proxy_for_protocol(
-            req.protocol().map(|protocol| protocol.is_secure()).unwrap_or(false),
+            req.protocol()
+                .map(|protocol| protocol.is_secure())
+                .unwrap_or(false),
         );
         match proxy.as_ref() {
             Some(proxy) => info!(
@@ -192,7 +193,7 @@ impl Service<Request<Body>> for UpstreamClient {
         let uri = req.uri().clone();
         let connect_started_at = Instant::now();
         let EstablishedClientConnection {
-            input: mut req,
+            input: req,
             conn: http_connection,
         } = match self.connector.serve(req).await {
             Ok(connection) => {
@@ -211,8 +212,7 @@ impl Service<Request<Body>> for UpstreamClient {
             }
         };
 
-        req.extensions()
-            .extend(http_connection.extensions());
+        req.extensions().extend(http_connection.extensions());
 
         let request_started_at = Instant::now();
         match http_connection.serve(req).await {

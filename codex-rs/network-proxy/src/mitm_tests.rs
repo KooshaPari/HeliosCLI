@@ -1,8 +1,6 @@
+use super::*;
 use rama_core::extensions::Extensions;
 use rama_core::extensions::ExtensionsRef;
-use super::*;
-
-use rama_net::address::SocketAddress;
 
 use crate::config::NetworkProxySettings;
 use crate::reasons::REASON_METHOD_NOT_ALLOWED;

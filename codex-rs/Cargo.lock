@@ -3494,6 +3494,7 @@ dependencies = [
  "pretty_assertions",
  "rama-core",
  "rama-crypto",
+ "rama-dns",
  "rama-error",
  "rama-http",
  "rama-http-backend",
@@ -8557,6 +8558,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "moka"
+version = "0.12.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4293f18e7567a1caf3c584855554377025c65e0aa445344d04171f5ad63d19b9"
+dependencies = [
+ "async-lock",
+ "crossbeam-channel",
+ "crossbeam-epoch",
+ "crossbeam-utils",
+ "equivalent",
+ "event-listener",
+ "futures-util",
+ "parking_lot",
+ "portable-atomic",
+ "smallvec",
+ "tagptr",
+ "uuid",
+]
+
+[[package]]
 name = "moxcms"
 version = "0.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10077,6 +10098,27 @@ dependencies = [
  "webpki-root-certs",
  "x509-parser",
  "yasna 0.6.0",
+]
+
+[[package]]
+name = "rama-dns"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "966b184189928bdd62d9b9e910dc0f3a334ec74486b7e3db09925335f308269a"
+dependencies = [
+ "ahash",
+ "arc-swap",
+ "bindgen",
+ "libc",
+ "moka",
+ "parking_lot",
+ "pin-project-lite",
+ "rama-core",
+ "rama-net",
+ "rama-utils",
+ "rand 0.10.1",
+ "tokio",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -12482,6 +12524,12 @@ dependencies = [
  "core-foundation-sys",
  "libc",
 ]
+
+[[package]]
+name = "tagptr"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
 
 [[package]]
 name = "take_mut"
