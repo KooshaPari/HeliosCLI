@@ -4733,7 +4733,7 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 [[package]]
 name = "crossterm"
 version = "0.28.1"
-source = "git+https://github.com/nornagon/crossterm?branch=nornagon%2Fcolor-query#87db8bfa6dc99427fd3b071681b07fc31c6ce995"
+source = "git+https://github.com/nornagon/crossterm?rev=87db8bfa6dc99427fd3b071681b07fc31c6ce995#87db8bfa6dc99427fd3b071681b07fc31c6ce995"
 dependencies = [
  "bitflags 2.13.2",
  "crossterm_winapi",
@@ -8353,7 +8353,7 @@ dependencies = [
 [[package]]
 name = "lru"
 version = "0.16.4"
-source = "git+https://github.com/jeromefroe/lru-rs?tag=0.16.4#d8c7f5ca51a86a8f561c14e21508a0f757aa05ad"
+source = "git+https://github.com/jeromefroe/lru-rs?rev=d8c7f5ca51a86a8f561c14e21508a0f757aa05ad#d8c7f5ca51a86a8f561c14e21508a0f757aa05ad"
 dependencies = [
  "hashbrown 0.16.1",
 ]
@@ -10524,7 +10524,7 @@ dependencies = [
 [[package]]
 name = "ratatui"
 version = "0.29.0"
-source = "git+https://github.com/KooshaPari/ratatui?branch=nornagon-v0.29.0-patch-lru#6fdd13b869134defdcae20890da06d4186fe9b89"
+source = "git+https://github.com/KooshaPari/ratatui?rev=6fdd13b869134defdcae20890da06d4186fe9b89#6fdd13b869134defdcae20890da06d4186fe9b89"
 dependencies = [
  "bitflags 2.13.2",
  "cassowary",
