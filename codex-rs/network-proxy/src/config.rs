@@ -297,6 +297,9 @@ pub enum NetworkMode {
     Full,
 }
 
+// rama 0.3 requires an explicit marker for anything stored in extensions.
+impl rama_core::extensions::Extension for NetworkMode {}
+
 impl NetworkMode {
     pub fn allows_method(self, method: &str) -> bool {
         match self {

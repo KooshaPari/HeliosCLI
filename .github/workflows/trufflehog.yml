@@ -1,13 +1,26 @@
 name: Trufflehog Secrets Scan
-concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
-
 on:
     pull_request:
     push:
         branches:
             - main
+permissions:
+    contents: read
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 jobs:
     trufflehog:
-        uses: KooshaPari/phenotype-tooling/.github/workflows/reusable/trufflehog.yml@main
+        name: TruffleHog secrets scan
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  fetch-depth: 0
+                  persist-credentials: false
+            - name: TruffleHog scan
+              uses: trufflesecurity/trufflehog@288a8a8643a2c5a36b81d231c550dccfa0beeb64 # main @ 2026-09-16
+              with:
+                  extraArgs: --github-actions --concurrency 4
+                  path: .

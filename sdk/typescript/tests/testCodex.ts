@@ -3,9 +3,36 @@ import path from "node:path";
 import { Codex } from "../src/codex";
 import type { CodexConfigObject } from "../src/codexOptions";
 
-export const codexExecPath =
-  process.env.CODEX_EXEC_PATH ??
-  path.join(process.cwd(), "..", "..", "codex-rs", "target", "debug", "codex");
+/**
+ * Resolve the `codex` binary the integration tests drive.
+ *
+ * Two things this has to get right:
+ *
+ *  1. Cargo honors `CARGO_TARGET_DIR`, which relocates the entire target tree.
+ *     Hardcoding `codex-rs/target/debug/codex` silently points at a path that
+ *     may not exist, which is the case in this repo's own CI/dev setup where
+ *     CARGO_TARGET_DIR is set. A relative value is resolved against the
+ *     codex-rs workspace, since that is where cargo is invoked from.
+ *  2. `spawn` with an absolute path does not do PATHEXT resolution, so the
+ *     Windows binary needs its `.exe` suffix spelled out.
+ */
+function resolveCodexExecPath(): string {
+  const explicit = process.env.CODEX_EXEC_PATH;
+  if (explicit) {
+    return explicit;
+  }
+
+  const workspaceDir = path.join(process.cwd(), "..", "..", "codex-rs");
+  const cargoTargetDir = process.env.CARGO_TARGET_DIR;
+  const targetDir = cargoTargetDir
+    ? path.resolve(workspaceDir, cargoTargetDir)
+    : path.join(workspaceDir, "target");
+
+  const binaryName = process.platform === "win32" ? "codex.exe" : "codex";
+  return path.join(targetDir, "debug", binaryName);
+}
+
+export const codexExecPath = resolveCodexExecPath();
 
 type CreateTestClientOptions = {
   apiKey?: string;

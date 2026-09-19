@@ -1,15 +1,27 @@
 # Mergify Configuration — Optimized for multi-language monorepos
 # Docs: https://docs.mergify.com/
+#
+# Check names: the `ci`, `lint`, `typecheck` and `test` checks referenced by the
+# original revision of this file do not exist in this repository, so every rule
+# gated on them was dead and nothing could auto-merge. The conditions now name
+# checks that actually report status:
+#
+#   ci         -> "CI results (required)"       (the repo's required aggregate)
+#   lint       -> "Lint & Format"               (Trunk Check)
+#   typecheck  -> "build + test + clippy + fmt" (rust-ci; cargo check/clippy)
+#   test       -> "build + test + clippy + fmt" (rust-ci; runs the test suite)
+#
+# Mergify reads this file from the default branch, not from a pull request head,
+# so a change here only takes effect once it lands on `main`.
 
 pull_request_rules:
     # Auto-merge when all CI checks pass; GitHub branch protection resolves conversations.
     - name: Auto-merge when CI is green
       conditions:
           - "#review-requested=0"
-          - check-success=ci
-          - check-success=lint
-          - check-success=typecheck
-          - check-success=test
+          - check-success=CI results (required)
+          - check-success=Lint & Format
+          - check-success=build + test + clippy + fmt
           - -conflict
           - -closed
       actions:
@@ -25,10 +37,9 @@ pull_request_rules:
     - name: Auto-merge owner PRs + CI green
       conditions:
           - author=KooshaPari
-          - check-success=ci
-          - check-success=lint
-          - check-success=typecheck
-          - check-success=test
+          - check-success=CI results (required)
+          - check-success=Lint & Format
+          - check-success=build + test + clippy + fmt
           - -conflict
           - -closed
           - -draft
@@ -47,7 +58,7 @@ pull_request_rules:
           - or:
                 - author = dependabot[bot]
                 - author = renovate[bot]
-          - check-success=ci
+          - check-success=CI results (required)
           - -conflict
           - -closed
       actions:
@@ -66,8 +77,8 @@ pull_request_rules:
                 - author = trunk-io[bot]
                 - author = mergify[bot]
                 - author = github-actions[bot]
-          - check-success=ci
-          - check-success=lint
+          - check-success=CI results (required)
+          - check-success=Lint & Format
           - -conflict
           - -closed
       actions:
@@ -75,14 +86,21 @@ pull_request_rules:
               method: squash
 
     # Add reviewers based on changed paths
+    # NOTE: no `teams:` key here. KooshaPari is a user account, not an
+    # organization, so `phenotype/core` (and any other team slug) can never
+    # resolve and the rule fails with "Invalid requested teams".
+    # NOTE: the `author!=KooshaPari` guard is required. GitHub rejects a review
+    # request when the requested reviewer is the pull request author, so
+    # without it this rule fails with "Can't request a review from the pull
+    # request author" on every owner-authored PR and the
+    # `Rule: Request review from team (request_reviews)` check stays red.
     - name: Request review from team
       conditions:
           - -closed
           - -draft
+          - author!=KooshaPari
       actions:
           request_reviews:
-              teams:
-                  - phenotype/core
               users:
                   - KooshaPari
 
@@ -150,9 +168,9 @@ pull_request_rules:
       conditions:
           - -closed
           - -draft
-          - check-success=ci
-          - check-success=lint
-          - check-success=test
+          - check-success=CI results (required)
+          - check-success=Lint & Format
+          - check-success=build + test + clippy + fmt
       actions:
           label:
               add:

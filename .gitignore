@@ -2,3 +2,6 @@ __pycache__/
 target/
 node_modules/
 deploy/.env
+# insta snapshot test artifacts (regenerated on each run)
+*.snap.new
+*.snap.d

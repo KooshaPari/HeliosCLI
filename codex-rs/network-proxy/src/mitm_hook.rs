@@ -11,6 +11,7 @@ use globset::GlobMatcher;
 use rama_http::HeaderValue;
 use rama_http::Request;
 use rama_http::header::HeaderName;
+use rama_net::uri::PathRef;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -391,8 +392,8 @@ fn hook_matches(hook: &MitmHook, req: &Request) -> bool {
         return false;
     }
 
-    let path = req.uri().path();
-    if !path_matches(&hook.matcher.path_prefixes, path) {
+    let path = req.uri().path_or_root();
+    if !path_matches(&hook.matcher.path_prefixes, &path) {
         return false;
     }
 
@@ -408,7 +409,7 @@ fn query_matches(query_constraints: &[QueryConstraint], req: &Request) -> bool {
         return true;
     }
 
-    let actual_query = req.uri().query().unwrap_or_default();
+    let actual_query = req.uri().query_or_empty();
     let mut actual_values: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (name, value) in form_urlencoded::parse(actual_query.as_bytes()) {
         actual_values
@@ -481,7 +482,15 @@ fn compile_path_matchers(path_prefixes: &[String]) -> Result<Vec<PathMatcher>> {
                     if prefix.is_empty() {
                         return Err(anyhow!("path_prefixes must not contain empty entries"));
                     }
-                    Ok(PathMatcher::Prefix(prefix.to_string()))
+                    // `Uri::path_or_root()` renders the percent-encoded path:
+                    // rama 0.3 switched from the `http` crate's `Uri` (whose
+                    // `path()` returned the raw, as-sent bytes) to its own
+                    // `rama_net::uri::Uri`. Normalize the configured literal
+                    // prefix through the same encoder so a prefix such as
+                    // `/repos/[draft]/` still matches a request whose path
+                    // carries those same bytes.
+                    let encoded = PathRef::from_raw_str(prefix).as_encoded_str().into_owned();
+                    Ok(PathMatcher::Prefix(encoded))
                 }
                 MatcherPattern::Glob(glob_pattern) => Ok(PathMatcher::Glob(compile_glob_matcher(
                     glob_pattern,
@@ -959,6 +968,49 @@ mod tests {
         );
         assert_eq!(
             evaluate_mitm_hooks(&hooks, "api.github.com", &non_literal_req),
+            HookEvaluation::HookedHostNoMatch
+        );
+    }
+
+    #[test]
+    fn evaluate_matches_literal_path_prefix_with_percent_encoded_octets() {
+        // Regression guard: `compile_path_matchers` normalizes a literal prefix
+        // through rama's percent encoder, and `encoded_path` uses
+        // `encode_preserving_pct`, so an already-valid `%XX` triplet is kept
+        // as-is instead of being re-encoded to `%25XX`. An operator-configured
+        // prefix that already carries an encoded octet must match a request
+        // path carrying those same bytes, and must not match the
+        // double-encoded form.
+        let mut config = base_config();
+        let mut hook = github_hook();
+        hook.matcher.path_prefixes = vec!["/repos/a%2Fb/".to_string()];
+        config.network.mitm_hooks = vec![hook];
+
+        let hooks = compile_mitm_hooks_with_resolvers(
+            &config,
+            |_| Some("abc".to_string()),
+            |_| Err(anyhow!("unexpected file lookup")),
+        )
+        .unwrap();
+        let encoded_req = Request::builder()
+            .method(Method::POST)
+            .uri("/repos/a%2Fb/codex/issues")
+            .body(Body::empty())
+            .unwrap();
+        let double_encoded_req = Request::builder()
+            .method(Method::POST)
+            .uri("/repos/a%252Fb/codex/issues")
+            .body(Body::empty())
+            .unwrap();
+
+        assert_eq!(
+            evaluate_mitm_hooks(&hooks, "api.github.com", &encoded_req),
+            HookEvaluation::Matched {
+                actions: hooks.get("api.github.com").unwrap()[0].actions.clone(),
+            }
+        );
+        assert_eq!(
+            evaluate_mitm_hooks(&hooks, "api.github.com", &double_encoded_req),
             HookEvaluation::HookedHostNoMatch
         );
     }
