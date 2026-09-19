@@ -1592,6 +1592,31 @@ mod tests {
     }
 
     #[test]
+    fn validate_absolute_form_host_header_allows_case_insensitive_host() {
+        // HTTP host names are ASCII-case-insensitive (RFC 3986 6.2.2.1).
+        // rama's `Host`/`Domain` equality already folds ASCII case, so an
+        // absolute-form request for `example.com` carrying `Host: EXAMPLE.COM`
+        // must be accepted instead of being rejected as a mismatch.
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri("http://example.com/")
+            .header("host", "EXAMPLE.COM")
+            .body(Body::empty())
+            .unwrap();
+
+        assert_eq!(
+            validate_absolute_form_host_header(
+                &req,
+                &req.authority()
+                    .unwrap()
+                    .into_host_with_port(req.protocol_default_port())
+                    .unwrap()
+            ),
+            Ok(())
+        );
+    }
+
+    #[test]
     fn validate_absolute_form_host_header_rejects_mismatched_host() {
         let req = Request::builder()
             .method(Method::GET)

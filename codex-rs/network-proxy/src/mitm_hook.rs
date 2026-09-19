@@ -973,6 +973,49 @@ mod tests {
     }
 
     #[test]
+    fn evaluate_matches_literal_path_prefix_with_percent_encoded_octets() {
+        // Regression guard: `compile_path_matchers` normalizes a literal prefix
+        // through rama's percent encoder, and `encoded_path` uses
+        // `encode_preserving_pct`, so an already-valid `%XX` triplet is kept
+        // as-is instead of being re-encoded to `%25XX`. An operator-configured
+        // prefix that already carries an encoded octet must match a request
+        // path carrying those same bytes, and must not match the
+        // double-encoded form.
+        let mut config = base_config();
+        let mut hook = github_hook();
+        hook.matcher.path_prefixes = vec!["/repos/a%2Fb/".to_string()];
+        config.network.mitm_hooks = vec![hook];
+
+        let hooks = compile_mitm_hooks_with_resolvers(
+            &config,
+            |_| Some("abc".to_string()),
+            |_| Err(anyhow!("unexpected file lookup")),
+        )
+        .unwrap();
+        let encoded_req = Request::builder()
+            .method(Method::POST)
+            .uri("/repos/a%2Fb/codex/issues")
+            .body(Body::empty())
+            .unwrap();
+        let double_encoded_req = Request::builder()
+            .method(Method::POST)
+            .uri("/repos/a%252Fb/codex/issues")
+            .body(Body::empty())
+            .unwrap();
+
+        assert_eq!(
+            evaluate_mitm_hooks(&hooks, "api.github.com", &encoded_req),
+            HookEvaluation::Matched {
+                actions: hooks.get("api.github.com").unwrap()[0].actions.clone(),
+            }
+        );
+        assert_eq!(
+            evaluate_mitm_hooks(&hooks, "api.github.com", &double_encoded_req),
+            HookEvaluation::HookedHostNoMatch
+        );
+    }
+
+    #[test]
     fn evaluate_allows_literal_values_with_reserved_prefixes() {
         let mut config = base_config();
         let mut hook = github_hook();
@@ -1054,4 +1097,3 @@ mod tests {
         );
     }
 }
-
