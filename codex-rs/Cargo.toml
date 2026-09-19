@@ -466,9 +466,13 @@ opt-level = 0
 # Uncomment to debug local changes.
 # ratatui = { path = "../../ratatui" }
 crossterm = { git = "https://github.com/nornagon/crossterm", branch = "nornagon/color-query" }
-ratatui = { git = "https://github.com/nornagon/ratatui", branch = "nornagon-v0.29.0-patch" }
+# Use the KooshaPari fork so the lru constraint can be bumped past the
+# vulnerable 0.12.x range (GHSA-rhfx-m35p-ff5j). The fork applies the same
+# `pub fn set_viewport_area` patch as upstream nornagon/ratatui.
+ratatui = { git = "https://github.com/KooshaPari/ratatui", branch = "nornagon-v0.29.0-patch-lru" }
 tokio-tungstenite = { git = "https://github.com/openai-oss-forks/tokio-tungstenite", rev = "132f5b39c862e3a970f731d709608b3e6276d5f6" }
 tungstenite = { git = "https://github.com/openai-oss-forks/tungstenite-rs", rev = "9200079d3b54a1ff51072e24d81fd354f085156f" }
+lru = { git = "https://github.com/jeromefroe/lru-rs", tag = "0.16.4" }
 
 # Uncomment to debug local changes.
 # rmcp = { path = "../../rust-sdk/crates/rmcp" }
