@@ -63,9 +63,15 @@ jobs:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   persist-credentials: false
+            # dylint needs a nightly with `rustc-dev`/`llvm-tools-preview`, and it
+            # gets one from `tools/argument-comment-lint/rust-toolchain`
+            # (`nightly-2025-09-18` plus those components), which rustup honours
+            # for commands run inside that directory. The action revision below
+            # pins 1.96.0 for the surrounding steps and declares only `targets`,
+            # `target` and `components`; it has no `toolchain` input, so the
+            # nightly is deliberately not requested from the action.
             - uses: dtolnay/rust-toolchain@ebb3d1676050bfd0971c36c1e215b5751473994d # 1.96.0
               with:
-                  toolchain: nightly-2025-09-18
                   components: llvm-tools-preview, rustc-dev, rust-src
             - name: Cache cargo-dylint tooling
               id: cargo_dylint_cache

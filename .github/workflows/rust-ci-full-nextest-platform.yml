@@ -94,6 +94,10 @@ jobs:
             - name: Install DotSlash
               uses: facebook/install-dotslash@1e4e7b3e07eaca387acb98f1d4720e0bee8dbb6a # v2
 
+            # The pinned `1.96.0` revision selects the toolchain itself. That
+            # revision declares only `targets`, `target` and `components`, so
+            # passing `toolchain:` here would be ignored; the version is carried
+            # by the ref, matching `codex-rs/rust-toolchain.toml`.
             - uses: dtolnay/rust-toolchain@ebb3d1676050bfd0971c36c1e215b5751473994d # 1.96.0
               with:
                   targets: ${{ inputs.target }}
@@ -319,6 +323,10 @@ jobs:
             - name: Install DotSlash
               uses: facebook/install-dotslash@1e4e7b3e07eaca387acb98f1d4720e0bee8dbb6a # v2
 
+            # The pinned `1.96.0` revision selects the toolchain itself. That
+            # revision declares only `targets`, `target` and `components`, so
+            # passing `toolchain:` here would be ignored; the version is carried
+            # by the ref, matching `codex-rs/rust-toolchain.toml`.
             - uses: dtolnay/rust-toolchain@ebb3d1676050bfd0971c36c1e215b5751473994d # 1.96.0
               with:
                   targets: ${{ inputs.target }}
