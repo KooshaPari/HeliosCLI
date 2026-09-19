@@ -5,6 +5,42 @@ All notable changes to **HeliosCLI** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0](https://github.com/KooshaPari/HeliosCLI/compare/v0.10.3...v0.11.0) (2026-09-19)
+
+
+### Features
+
+* **network-proxy:** migrate rama 0.3.0-alpha.4 -&gt; 0.3.0, clearing both hickory alerts ([#675](https://github.com/KooshaPari/HeliosCLI/issues/675)) ([a118c1a](https://github.com/KooshaPari/HeliosCLI/commit/a118c1af88c83f56f3bd03f6f60762c07ebb4b9a))
+
+
+### Bug Fixes
+
+* add missing serde imports to helios-ai/persistence.rs ([1c33985](https://github.com/KooshaPari/HeliosCLI/commit/1c33985e1ed38525cd430e516c99765875c6878a))
+* **ci:** add rust-toolchain step before cargo-deny ([51191b0](https://github.com/KooshaPari/HeliosCLI/commit/51191b0af71e005ede462cc5904046d42e5ed020))
+* **ci:** clear remaining dependabot advisories and unblock codex-rs fmt ([ae6fde8](https://github.com/KooshaPari/HeliosCLI/commit/ae6fde847897575be23f81df549c5032a492b98b))
+* **ci:** regenerate argument-comment-lint Cargo.lock with conflict markers in it ([c93f8e3](https://github.com/KooshaPari/HeliosCLI/commit/c93f8e32575223e775479f9fbeb12449826fca9d))
+* **ci:** restore the bench-smoke recipe the Format job invokes ([9a01f36](https://github.com/KooshaPari/HeliosCLI/commit/9a01f36248e2eb934f19de1334a061430c3d0457))
+* **ci:** stop rust-ci-full jobs that can never acquire a runner ([1dee523](https://github.com/KooshaPari/HeliosCLI/commit/1dee523f99312be2fff79b3f80626a88ee5817a3))
+* **deps:** address Dependabot security alerts ([6e2057d](https://github.com/KooshaPari/HeliosCLI/commit/6e2057dd4cdaa08e60a702399fe71ee8b137487b))
+* **deps:** bump openssl, actix-http, cmov and pyo3 past advisories ([d221085](https://github.com/KooshaPari/HeliosCLI/commit/d221085c3ad6dc0a4ca53873ca98771ae9f36a67))
+* **deps:** bump ratatui 0.29-&gt;0.30, crossterm 0.28-&gt;0.29, lru 0.12-&gt;0.18 ([d86e5cb](https://github.com/KooshaPari/HeliosCLI/commit/d86e5cb5b7584c205fd563e780cfa34a93e1ee44))
+* **deps:** bump rmcp 1.8-&gt;3.4, opentelemetry 0.31-&gt;0.32, reqwest otel 0.12-&gt;0.13 ([4119318](https://github.com/KooshaPari/HeliosCLI/commit/4119318e5b67a1c42e97d198ee992ed247be44cb))
+* **deps:** bump transitive Rust deps for Dependabot alerts ([107ee16](https://github.com/KooshaPari/HeliosCLI/commit/107ee164cd68bc57d8347a1becad5c735b2457f8))
+* **deps:** prune stale `atty` from root Cargo.lock ([585de76](https://github.com/KooshaPari/HeliosCLI/commit/585de7674de046fd90189298a11cbfb3ca1d54c4))
+* **deps:** replace dead rich-cli-kit git dep with local rck-core stub ([70fa6dd](https://github.com/KooshaPari/HeliosCLI/commit/70fa6ddcc02f2f0dd83d95361c156aa828c2cf02))
+* **helios-ai:** remove unused Delta import in sse.rs ([fe8bb2f](https://github.com/KooshaPari/HeliosCLI/commit/fe8bb2f7e42ce586d5682c3ded62aa0e575fb164))
+* **mcp-server:** name task methods in unsupported-request replies ([c59396a](https://github.com/KooshaPari/HeliosCLI/commit/c59396acffab06e085f04ee2c4c235acb01464a3))
+* **mcp:** complete rmcp 1.8 -&gt; 3.4 migration for test targets ([eaeba90](https://github.com/KooshaPari/HeliosCLI/commit/eaeba901c9b318fe3832163f75ae0acaa580555d))
+* **model-provider-info:** reject ws://http:// double-scheme base_url ([#672](https://github.com/KooshaPari/HeliosCLI/issues/672)) ([429160f](https://github.com/KooshaPari/HeliosCLI/commit/429160f27ad80b1c58ebf9e4fb8f2b3523cbb7ed))
+* remove unused imports in harness_verify test module flagged by clippy ([3a4e268](https://github.com/KooshaPari/HeliosCLI/commit/3a4e268a75e8e899eecad85c1c0ceadac1d258e0))
+* remove useless .map_err(Into::into) flagged by clippy ([0c75ed3](https://github.com/KooshaPari/HeliosCLI/commit/0c75ed33ce68ca9abd5a1f7b8a3f2971e00946e4))
+* **repo:** repair manifests zeroed and mis-indented by 3f44dec84 ([3ee9313](https://github.com/KooshaPari/HeliosCLI/commit/3ee93133675661959a5a2f995ec9b74d096a2960))
+* resolve CI failures from decomposition and new advisories ([ade819b](https://github.com/KooshaPari/HeliosCLI/commit/ade819b3bd602de1726b9f7e926fce62086aeaaf))
+* resolve clap short flag collision causing debug_assert panic ([0c8cdd2](https://github.com/KooshaPari/HeliosCLI/commit/0c8cdd217422a9ab08b9d1b5b990f2bba65c93cc))
+* resolve test compilation error and unused import warnings ([17cbfdb](https://github.com/KooshaPari/HeliosCLI/commit/17cbfdbd9a716f5d1c288674fe6202d01d25c1f3))
+* **rmcp-client:** migrate rmcp 1.8 -&gt; 3.4 API changes (lib + all bins) ([da7ba96](https://github.com/KooshaPari/HeliosCLI/commit/da7ba9603945bbdc6a6541a44ca211ca9de1975d))
+* **sdk:** resolve npm advisories, declare phantom deps, fix Windows test path ([f2ca4b7](https://github.com/KooshaPari/HeliosCLI/commit/f2ca4b7ffc83cdab388a38be403ffb935d6729cf))
+
 ## [0.10.3](https://github.com/KooshaPari/HeliosCLI/compare/v0.10.2...v0.10.3) (2026-09-16)
 
 
