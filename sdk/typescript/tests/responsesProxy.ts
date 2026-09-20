@@ -185,7 +185,7 @@ export function shell_call(): SseEvent {
     type: "response.output_item.done",
     item: {
       type: "function_call",
-      call_id: `call_id${Math.random().toString(36).slice(2)}`,
+      call_id: `call_id${Math.random().toString(36).slice(2)}`, // NOSONAR — test fixture, non-security use
       name: "shell_command",
       arguments: JSON.stringify({
         command: "echo 'Hello, world!'",

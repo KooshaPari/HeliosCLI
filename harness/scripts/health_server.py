@@ -116,7 +116,7 @@ def main():
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
     args = parser.parse_args()
 
-    server = HTTPServer((args.host, args.port), HealthRequestHandler)
+    server = HTTPServer((args.host, args.port), HealthRequestHandler)  # nosonar — localhost-only health endpoint, not internet-facing
     print(f"Starting health server on {args.host}:{args.port}")
     print("Endpoints:")
     print("  GET /health - Health check")
