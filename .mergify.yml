@@ -13,6 +13,14 @@
 #
 # Mergify reads this file from the default branch, not from a pull request head,
 # so a change here only takes effect once it lands on `main`.
+#
+# `v8-canary` is intentionally NOT listed as a required check. The v8-canary
+# workflow runs the Bazel-driven rusty-v8 release build, which has not been
+# green on this repo since PR #13366 (Mar 3, 2026); the current deep failure is
+# a libc++ `include_next`-chain reordering problem in the custom libc++ overlay
+# (see docs/postmortems/2026-09-v8-canary.md) and there is no known-good
+# configuration to import. v8-canary is wrapped with `continue-on-error: true`
+# and its build log is uploaded as an artifact; do not gate on it.
 
 pull_request_rules:
     # Auto-merge when all CI checks pass; GitHub branch protection resolves conversations.
