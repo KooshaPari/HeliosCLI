@@ -283,6 +283,13 @@ jobs:
                   fi
 
             - name: Stage release pair
+              # Informational workflow: don't fail the job if the Bazel build
+              # didn't produce artifacts. The Stage step needs dist/<target>/
+              # to exist; without it, Stage errors out. Wrap in
+              # `continue-on-error: true` so downstream smoke / upload steps
+              # can still run, and the upload-build-log step captures the
+              # build failure even when there is nothing to stage.
+              continue-on-error: true
               env:
                   BAZEL_CONFIG: ${{ matrix.bazel_config }}
                   BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
@@ -310,6 +317,10 @@ jobs:
                   python3 .github/scripts/rusty_v8_bazel.py stage-release-pair "${stage_args[@]}"
 
             - name: Smoke test staged artifact with Cargo
+              # If Stage failed, dist/<target>/ is missing or empty; the smoke
+              # test would fail too. Suppress here so the upload-build-log
+              # step still runs.
+              continue-on-error: true
               env:
                   SANDBOX: ${{ matrix.sandbox }}
                   TARGET: ${{ matrix.target }}
@@ -492,6 +503,10 @@ jobs:
                   fi
 
             - name: Stage upstream sandbox release pair
+              # If the source build above failed (informational), this will
+              # not produce artifacts; suppress so the upload-build-log
+              # step still runs.
+              continue-on-error: true
               env:
                   TARGET: ${{ matrix.target }}
               shell: bash
@@ -504,6 +519,9 @@ jobs:
                     --sandbox
 
             - name: Smoke link staged artifact with Cargo
+              # If Stage failed, dist/<target>/ is missing or empty; the
+              # smoke step would fail too. Suppress here.
+              continue-on-error: true
               env:
                   TARGET: ${{ matrix.target }}
               shell: bash
