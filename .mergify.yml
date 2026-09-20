@@ -93,6 +93,22 @@ pull_request_rules:
           merge:
               method: squash
 
+    # Release Please bot PRs (version bumps + changelogs). release-please[bot]
+    # matches none of the rules above, so these PRs otherwise stall open until
+    # manually merged (see PR #673, merged by hand on 2026-09-20).
+    - name: Auto-merge release-please PRs
+      conditions:
+          - author = release-please[bot]
+          - check-success=CI results (required)
+          - check-success=Lint & Format
+          - check-success=build + test + clippy + fmt
+          - -conflict
+          - -closed
+      actions:
+          merge:
+              method: squash
+          delete_head_branch:
+
     # Add reviewers based on changed paths
     # NOTE: no `teams:` key here. KooshaPari is a user account, not an
     # organization, so `phenotype/core` (and any other team slug) can never
