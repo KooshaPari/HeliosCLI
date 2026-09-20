@@ -105,6 +105,12 @@ jobs:
         name: Build ${{ matrix.variant }} ${{ matrix.target }}
         needs: metadata
         runs-on: ${{ matrix.runner }}
+        # Job-level continue-on-error: runner-allocation failures (e.g. macOS
+        # billing exhaustion) kill the job before any step executes, so the
+        # per-step `continue-on-error` flags cannot cover them. This whole
+        # workflow is informational (see docs/postmortems/2026-09-v8-canary.md);
+        # never let any matrix leg fail the run.
+        continue-on-error: true
         permissions:
             contents: read
             actions: read
@@ -387,6 +393,9 @@ jobs:
         needs: metadata
         if: ${{ needs.metadata.outputs.windows_source_required == 'true' }}
         runs-on: ${{ matrix.runner }}
+        # Job-level continue-on-error: same informational rationale as the
+        # `build` job above (docs/postmortems/2026-09-v8-canary.md).
+        continue-on-error: true
         permissions:
             contents: read
         strategy:
