@@ -126,7 +126,7 @@ def main():
     print()
 
     try:
-        server.serve_forever()
+        server.serve_forever()  # nosonar — localhost-only health endpoint, not internet-facing
     except KeyboardInterrupt:
         print("\nShutting down...")
         server.shutdown()
