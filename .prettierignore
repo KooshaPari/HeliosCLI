@@ -14,3 +14,12 @@
 .github/**/*.yaml
 **/.github/**/*.yml
 **/.github/**/*.yaml
+
+# release-please auto-generated files use 2-space JSON indent; prettier
+# with the `.editorconfig` 4-space setting would reformat them on every
+# release-please run, causing commit churn. Let release-please own its
+# file format.
+
+.release-please-manifest.json
+release-please-config.json
+CHANGELOG.md
