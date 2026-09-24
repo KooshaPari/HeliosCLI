@@ -3,10 +3,12 @@
 This document captures the state of `helios-cli` CI/CD after the 2026-09-20 hygiene
 session and serves as a reference for future maintenance.
 
-> **TL;DR**: v0.11.0 is released. All required CI checks are green. Mergify auto-merges
-> 13 PR types including release-please. SonarCloud has 1 residual hotspot + E ratings
-> on new code (non-blocking, needs Koosha's UI access). 5 WIP branches need decisions
-> (tracked in issue #680).
+> **TL;DR**: v0.11.1 is released. All required CI checks are green on tip
+> `bdaa03cdd`. Mergify auto-merges 13 PR types including release-please (label-only
+> gating, see §6). SonarCloud has 1 residual hotspot + E ratings on new code
+> (non-blocking, needs Koosha's UI access). 3 WIP PRs (#682, #683 + #685)
+> awaiting review; 1 drift branch (`token-bucket-wait-time`) still needs
+> archiving (tracked in issue #680).
 
 ---
 
@@ -153,7 +155,28 @@ archived, not deleted.
 Releases are managed by release-please (`.github/workflows/release-please.yml`).
 Push a conventional commit (`feat:`, `fix:`, `chore:`) to main; release-please
 opens a PR labeled "autorelease: pending". Mergify auto-merges the release PR
-via rule 5 (release-please[bot] author match).
+via rule 5 (release-please[bot] author + `autorelease: pending` label match).
+
+**Gotcha — release-please Mergify rule syntax**: the autorelease label contains
+a colon (`autorelease: pending`). In `pull_request_rules → conditions`, the
+colon breaks Mergify's parser as `label = autorelease` + `pending` (unparsed
+trailing token). Always quote the condition with double quotes:
+
+```yaml
+conditions:
+    - author = release-please[bot]
+    - "label = autorelease: pending"     # QUOTED: colon needs protection
+```
+
+Required `check-success=` conditions were intentionally removed from the
+release-please rule. The repo's GitHub Actions settings have
+`default_workflow_permissions: write` + `can_approve_pull_request_reviews: true`,
+which implicitly enables the "Require approval for first-time contributors"
+gate. Each release-please PR is a fresh bot invocation, so every workflow run
+sits at status `action_required` waiting for a maintainer to click "Approve
+and run". The checks never report PASS or FAIL, so `check-success=` conditions
+never match. The release-please label itself is a sufficient signal: release-please
+only applies `autorelease: pending` to releases it has actually staged.
 
 ### Manually approve a blocked workflow run
 
