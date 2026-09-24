@@ -3,12 +3,12 @@
 This document captures the state of `helios-cli` CI/CD after the 2026-09-20 hygiene
 session and serves as a reference for future maintenance.
 
-> **TL;DR**: v0.11.1 is released. All required CI checks are green on tip
-> `bdaa03cdd`. Mergify auto-merges 13 PR types including release-please (label-only
+> **TL;DR**: v0.11.1 is released. All required CI checks are green on main.
+> Mergify auto-merges 13 PR types including release-please (label-only
 > gating, see §6). SonarCloud has 1 residual hotspot + E ratings on new code
-> (non-blocking, needs Koosha's UI access). 3 WIP PRs (#682, #683 + #685)
-> awaiting review; 1 drift branch (`token-bucket-wait-time`) still needs
-> archiving (tracked in issue #680).
+> (non-blocking, needs Koosha's UI access). All WIP PRs resolved: #681, #685
+> merged; #682, #683 closed as already-incorporated (zero delta vs main).
+> 1 drift branch (`token-bucket-wait-time`) still needs archiving (issue #680).
 
 ---
 
@@ -248,6 +248,21 @@ cannot cover jobs where no steps execute.
 ## 9. Known gotchas (quick reference)
 
 - **Mergify action name is `delete_head_branch:`** — `delete_branch:` breaks the entire config
+- **A CONFLICTING (DIRTY) PR gets ZERO GitHub Actions runs.** GitHub cannot create
+  the merge ref, so no `pull_request` events fire — `CI results (required)`,
+  `Lint & Format`, `build + test + clippy + fmt` never appear, Mergify's
+  `check-success=` conditions never match, and the PR stalls silently with only
+  App checks (SonarCloud/Socket/semgrep) reporting. Diagnose with
+  `gh pr view N --json mergeable,mergeStateStatus` (`CONFLICTING`/`DIRTY`);
+  the workflow runs that DID fire are only `push`-event runs from the branch
+  (they may additionally fail with "Invalid workflow file" if the branch is
+  old enough to predate workflow repairs). Fix by merging main into the branch.
+- **`actions/runs?head_sha=<sha>` returns 0 for `pull_request`-event runs.**
+  Filter client-side on `event=pull_request` + `pull_requests[].number`, or use
+  a `created=<start>..<end>` window instead.
+- **Take-main rule for stale-branch conflicts**: if resolving a conflicted PR
+  yields `git diff origin/main` == empty, the PR is already fully incorporated
+  — close it rather than merge a no-op (see #682, #683 on 2026-09-24).
 - **Job-level `continue-on-error: true`** required for runner allocation failures (per-step insufficient)
 - **release-please[bot] author** matches none of the standard Mergify rules — needs dedicated rule
 - **`SONAR_TOKEN` needed** to mark SonarCloud hotspots reviewed via API; UI review works without it
