@@ -5,6 +5,13 @@ All notable changes to **HeliosCLI** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.0...v0.11.1) (2026-09-24)
+
+
+### Performance Improvements
+
+* **model-provider:** raise models refresh HTTP timeout from 5s to 30s ([#681](https://github.com/KooshaPari/HeliosCLI/issues/681)) ([0b32b61](https://github.com/KooshaPari/HeliosCLI/commit/0b32b61e325038a66511f4e83b88ceee31777439))
+
 ## [0.11.0](https://github.com/KooshaPari/HeliosCLI/compare/v0.10.3...v0.11.0) (2026-09-20)
 
 
