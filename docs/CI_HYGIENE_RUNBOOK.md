@@ -165,7 +165,7 @@ trailing token). Always quote the condition with double quotes:
 ```yaml
 conditions:
     - author = release-please[bot]
-    - "label = autorelease: pending"     # QUOTED: colon needs protection
+    - "label = autorelease: pending" # QUOTED: colon needs protection
 ```
 
 Required `check-success=` conditions were intentionally removed from the
