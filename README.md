@@ -1,4 +1,5 @@
 > **Pinned references (Phenotype-org)**
+>
 > - MSRV: see rust-toolchain.toml
 > - cargo-deny config: see deny.toml
 > - cargo-audit: rustsec/audit-check@v2 weekly
@@ -75,25 +76,25 @@ codex-rs/
 
 ### Key Crates and Responsibilities
 
-| Crate                  | Responsibility                                                                        |
-| ---------------------- | ------------------------------------------------------------------------------------- |
-| `kla`                  | Harness CLI recorder (binary: `kla`)                                                  |
-| `helios_config`        | Centralised workspace config                                                          |
-| `codex` (vendored)     | Upstream agent CLI binary under `codex-rs/cli` (not in root workspace)                |
-| `codex-core` (vendored)| Agent core: config loading, terminal detection, session management                    |
-| `codex-tui` (vendored) | Interactive terminal UI with streaming responses                                      |
-| `codex-exec` (vendored)| Non-interactive execution mode for scripted/CI usage                                  |
+| Crate                   | Responsibility                                                         |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `kla`                   | Harness CLI recorder (binary: `kla`)                                   |
+| `helios_config`         | Centralised workspace config                                           |
+| `codex` (vendored)      | Upstream agent CLI binary under `codex-rs/cli` (not in root workspace) |
+| `codex-core` (vendored) | Agent core: config loading, terminal detection, session management     |
+| `codex-tui` (vendored)  | Interactive terminal UI with streaming responses                       |
+| `codex-exec` (vendored) | Non-interactive execution mode for scripted/CI usage                   |
 
 ## Setup Instructions
 
 ### System Requirements
 
-| Requirement | Details                                                              |
-| ----------- | -------------------------------------------------------------------- |
-| OS          | macOS 12+, Ubuntu 20.04+/Debian 10+, or Windows 11 via WSL2          |
+| Requirement | Details                                                             |
+| ----------- | ------------------------------------------------------------------- |
+| OS          | macOS 12+, Ubuntu 20.04+/Debian 10+, or Windows 11 via WSL2         |
 | Rust        | Edition 2024 (codex-rs workspace), Edition 2021 (harness workspace) |
-| RAM         | 4 GB minimum (8 GB recommended)                                      |
-| Git         | 2.23+ for built-in PR helpers (optional)                             |
+| RAM         | 4 GB minimum (8 GB recommended)                                     |
+| Git         | 2.23+ for built-in PR helpers (optional)                            |
 
 ### Building from Source
 
@@ -335,4 +336,3 @@ This repository includes the following cross-cutting documents:
 
 - [`AGENTS.md`](AGENTS.md) - operating instructions for AI agents and human contributors
 - [`docs/`](docs/) - design notes, ADRs, and supporting documentation (see [`docs/index.md`](docs/index.md))
-
