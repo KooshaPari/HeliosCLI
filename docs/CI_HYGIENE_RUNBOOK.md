@@ -143,10 +143,16 @@ customize the gate.
 
 ### What needs Koosha
 
-1. **1 residual hotspot**: `harness/scripts/health_server.py:129`. Either:
-    - Mark SAFE in SonarCloud UI at https://sonarcloud.io/project/security_hotspots
-    - Provide a `SONAR_TOKEN` secret so we can call
-      `POST /api/hotspots/change_status` to auto-resolve
+1. **1 residual hotspot**: `harness/scripts/health_server.py:129` (`python:S5332`,
+   clear-text HTTP on a local health/metrics server — SAFE is the defensible
+   resolution). Two paths:
+    - Mark SAFE in the UI at https://sonarcloud.io/project/security_hotspots
+      (one click), **or**
+    - Set a **real** `SONAR_TOKEN` Actions secret, then dispatch the
+      `sonar-hotspot-manage` workflow (`action=list` → `action=resolve` with the
+      hotspot key). NOTE: a secret named `SONAR_TOKEN` already exists but its
+      value is a **1-character placeholder** (verified 2026-09-27: token length 1,
+      API returns HTTP 401) — it must be replaced, not added.
 2. **E ratings on new code**: Either tighten leak period to 30 days, or
    customize the gate to drop "New Code ≥ A" conditions
 
@@ -309,9 +315,34 @@ cannot cover jobs where no steps execute.
   — close it rather than merge a no-op (see #682, #683 on 2026-09-24).
 - **Job-level `continue-on-error: true`** required for runner allocation failures (per-step insufficient)
 - **release-please[bot] author** matches none of the standard Mergify rules — needs dedicated rule
-- **`SONAR_TOKEN` needed** to mark SonarCloud hotspots reviewed via API; UI review works without it
+- **`SONAR_TOKEN` needed** to mark SonarCloud hotspots reviewed via API; UI review works without it. The
+  secret exists but is a **1-char placeholder** (401) — replace, don't add;
+  then use the `sonar-hotspot-manage` workflow
 - **`/tmp/` is RAM-backed** in this environment — use `$JCODE_SCRATCH_DIR` for large files
 - **cmd.exe for-loops** don't expand `$var` — use PowerShell `.ps1` files instead
 - **`gh issue close --comment "..."`** works inline; no `--comment-file`
 - **`git diff origin/main...branch`** (3-dot) shows logical changes from merge-base
 - **`git diff origin/main..branch`** (2-dot) shows everything not in main; misleading when branch is drifted
+
+---
+
+## 10. Local harness test failures on Windows (not run in CI)
+
+`python -m pytest harness/tests/` on Windows fails **8 of ~121 tests**. Baseline
+verified 2026-09-27: identical 8 failures on pristine main and with new commits
+(113 pass). No CI workflow runs pytest, so these are invisible to checks. All 8
+are POSIX-platform assumptions — not product regressions:
+
+| Test                                                                                                                     | Root cause                                                                                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test_run_harness::validated_output_path...`                                                                             | product: `run-harness.py:123` `os.open(workspace, O_RDONLY\|O_DIRECTORY\|O_NOFOLLOW)` — opening a directory handle is POSIX-only → `PermissionError [Errno 13]` on Windows |
+| `test_run_harness::write_output_uses_descriptor...`                                                                      | same line 123                                                                                                                                                              |
+| `test_run_harness::harness_dry_run_and_plan_hash` (and `harness_replay_and_validate`, `replay_uses_stored_plan_hash...`) | same line 123 inside the `run-harness.py` subprocess → exit 1                                                                                                              |
+| `test_run_harness::phase2_skip_marker_escapes...`                                                                        | test fixture creates a path containing `"` — legal on POSIX, `OSError WinError 123` on NTFS                                                                                |
+| `test_runner_contract::test_runner_retries_and_timeout`                                                                  | runs `sleep 2`, expects GNU `timeout`-style exit 124 (got 127: command not found on Windows)                                                                               |
+| `test_cli_integration::test_phase_2_wrapper...`                                                                          | invokes `bash` with Windows paths — backslashes eaten as escapes → file-not-found (127)                                                                                    |
+
+Proper fixes = product portability work (Windows fallback for the descriptor-safe
+write; security trade-off — it exists to prevent symlink TOCTOU) + test
+parametrization/skips. Both are frozen-repo product decisions: run harness tests
+on POSIX, or expect exactly these 8 on Windows.
