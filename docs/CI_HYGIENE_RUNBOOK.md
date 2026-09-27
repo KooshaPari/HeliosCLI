@@ -57,6 +57,38 @@ exactly:
 - `Lint & Format`
 - `build + test + clippy + fmt`
 
+**When adding branch deletion** to a rule use `delete_head_branch:` (see gotcha
+below) — or rely on the repo-native `delete_branch_on_merge: true`.
+
+### Release-please merge flow — external gates (PR #688, v0.11.2, 2026-09-27)
+
+The label-only rule fires a plain `merge` action, but two GitHub-side gates can
+still block it; Mergify will report them as
+`Waiting for queue conditions to match` with its `Mergify Merge Queue` check
+stuck at `neutral`:
+
+1. **Branch protection "Require conversation resolution."** Bots
+   (`chatgpt-codex-connector`, SonarQube, CodeRabbit) leave review threads on
+   the release PR. While any is unresolved GitHub reports `BLOCKED` and the
+   queue condition `#review-threads-unresolved = 0` [🛡 GitHub branch
+   protection] never matches. Fix: reply in-thread with the evidence, then
+   resolve via GraphQL:
+
+    ```
+    gh api graphql -f query='query { repository(owner:"KooshaPari", name:"HeliosCLI") { pullRequest(number: N) { reviewThreads(first: 20) { nodes { id isResolved } } } } }'
+    gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_..."}) { thread { id isResolved } } }'
+    ```
+
+    Precedent: NO release commit on main has ever carried `AP-ITEM:`/
+    `AP-FEATURE:` — automated version bumps are not AgilePlus work items.
+    Reply with that evidence; do NOT invent an id to satisfy the bot.
+
+2. **Mergify does not re-evaluate on GitHub-only events.** Resolving a review
+   thread does not wake Mergify — the queue status stays "Waiting" until a
+   comment event arrives. After fixing any external condition post
+   `@mergifyio refresh`; on #688 the refresh comment itself triggered
+   evaluation and the PR merged within a second.
+
 ---
 
 ## 3. Trunk Check (prettier)
@@ -138,6 +170,10 @@ customize the gate.
 - ✅ Deleted: 5 remote branches (zero unmerged commits)
 - ✅ Deleted: 15 local branches (PRs merged/closed)
 - ✅ Deleted worktree + branch: `fix/http-pool-timeout-20260723` (zero commits ahead since July)
+- ✅ Removed worktrees (2026-09-27): `fix/http-pool-timeout-clean-20260802`,
+  `fix/http-pool-timeout-publish-20260805` — annotated archive tags verified to
+  peel exactly to the branch heads (`dacd63894`, `5f58c82f7`); disk held only
+  `__pycache__`/`.pytest_cache` junk. Branch refs kept.
 
 ### Audit before delete
 
@@ -156,6 +192,8 @@ Releases are managed by release-please (`.github/workflows/release-please.yml`).
 Push a conventional commit (`feat:`, `fix:`, `chore:`) to main; release-please
 opens a PR labeled "autorelease: pending". Mergify auto-merges the release PR
 via rule 5 (release-please[bot] author + `autorelease: pending` label match).
+If the PR stalls at `BLOCKED`/queue-conditions, see
+"Release-please merge flow — external gates" in §2 (review-thread resolution).
 
 **Gotcha — release-please Mergify rule syntax**: the autorelease label contains
 a colon (`autorelease: pending`). In `pull_request_rules → conditions`, the
@@ -248,6 +286,12 @@ cannot cover jobs where no steps execute.
 ## 9. Known gotchas (quick reference)
 
 - **Mergify action name is `delete_head_branch:`** — `delete_branch:` breaks the entire config
+- **Unresolved bot review threads block release PRs** — branch protection
+  (`#review-threads-unresolved = 0`) flips the PR to `BLOCKED` and Mergify
+  waits forever at "queue conditions". Reply + GraphQL `resolveReviewThread`,
+  then `@mergifyio refresh` (thread resolution alone does NOT re-trigger
+  Mergify). Never invent an `AP-ITEM:` id for a bot — check precedent first
+  (`git log --format=%b -60 | findstr AP-` → zero for all releases).
 - **A CONFLICTING (DIRTY) PR gets ZERO GitHub Actions runs.** GitHub cannot create
   the merge ref, so no `pull_request` events fire — `CI results (required)`,
   `Lint & Format`, `build + test + clippy + fmt` never appear, Mergify's
