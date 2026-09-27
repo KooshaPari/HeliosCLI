@@ -30,9 +30,16 @@ jobs:
               env:
                   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
               run: |
-                  curl -sS -u ":$SONAR_TOKEN" \
-                    "https://sonarcloud.io/api/hotspots/search?projectKey=KooshaPari_helios-cli&status=TO_REVIEW&ps=20" \
-                    | head -c 6000
+                  echo "token length: ${#SONAR_TOKEN}"
+                  resp=$(curl -sS -u ":$SONAR_TOKEN" \
+                    -w "\nHTTP_STATUS:%{http_code}" \
+                    "https://sonarcloud.io/api/hotspots/search?projectKey=KooshaPari_helios-cli&status=TO_REVIEW&ps=20")
+                  rc=$?
+                  echo "curl exit: $rc"
+                  echo "BODY_START"
+                  echo "$resp"
+                  echo "BODY_END"
+                  echo "$resp" >> "$GITHUB_STEP_SUMMARY"
             - name: Resolve hotspot
               if: inputs.action == 'resolve'
               env:
