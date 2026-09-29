@@ -15,6 +15,10 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # An explicit permissions block zeroes every unlisted scope; the
+  # issue-creation step needs issues:write or fails weekly with 403
+  # 'Resource not accessible by integration'.
+  issues: write
 
 jobs:
   check-upstream:
