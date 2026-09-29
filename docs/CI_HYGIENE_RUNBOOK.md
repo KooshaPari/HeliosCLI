@@ -292,6 +292,12 @@ cannot cover jobs where no steps execute.
 ## 9. Known gotchas (quick reference)
 
 - **Mergify action name is `delete_head_branch:`** — `delete_branch:` breaks the entire config
+- **Explicit `permissions:` in a workflow zeroes every unlisted scope** —
+  `codex-upstream-sync.yml` declared only `contents`+`pull-requests`, so its
+  issue-creation step 403'd (`Resource not accessible by integration`) on **6
+  consecutive weekly runs (2026-08-24 → 09-28)** before `issues: write` was
+  added (2026-09-29). When a scheduled workflow starts failing, diff its
+  `permissions:` against what its steps actually call.
 - **Unresolved bot review threads block release PRs** — branch protection
   (`#review-threads-unresolved = 0`) flips the PR to `BLOCKED` and Mergify
   waits forever at "queue conditions". Reply + GraphQL `resolveReviewThread`,
