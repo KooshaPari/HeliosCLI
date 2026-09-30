@@ -20,7 +20,7 @@ Status: OPEN. No completion percentage.
 | HC-S12 | Persistence/checkpoint/recovery | harness_checkpoint and related crates present | OPEN: actual durability/consumer mapping |
 | HC-S13 | Performance/scaling | historical perf branches + harness_scaling claims | OPEN: benchmark evidence and current Codex/jcode matched comparison |
 | HC-S14 | Registry/history/ADRs/issues/PRs | substantial prior rationalization and fork extraction history | OPEN |
-| HC-S15 | Current Codex upstream | active strategic upstream; user states materially evolved since HeliosCLI fork | OPEN SOTA/upstream delta |
+| HC-S15 | Current Codex upstream | same-day frozen `openai/codex@60947e234156ac12bdb7fba2477d3965f166bd34`; modern workspace includes agent graph/identity/roles/message board, app-server daemon/client/protocol, plugins/extensions, state/thread stores, rollout tracing, workload identity, realtime/environment/permissions and SDK surfaces absent from the old Helios root model | Partial: architecture delta established; semantic matched-capability comparison open |
 | HC-S16 | KCode/jcode comparison | second active primary and potential complementary/converged lineage | OPEN family convergence matrix |
 | HC-S17 | HeliosLite/Forgecode | sunset donor/reference only | Preserve evidence; no new primary implementation work |
 
