@@ -93,10 +93,15 @@ pull_request_rules:
           merge:
               method: squash
 
-    # Release Please bot PRs (version bumps + changelogs). release-please[bot]
-    # matches none of the rules above, so these PRs otherwise stall open until
-    # manually merged (see PR #673, merged by hand on 2026-09-20).
-    #
+    # Release Please bot PRs (version bumps + changelogs). The release PRs in
+    # this repository are opened by release-please running AS A WORKFLOW, so
+    # GitHub records the author as `github-actions[bot]`, NOT the
+    # `release-please[bot]` app login — the original `author =
+    # release-please[bot]` condition NEVER matched and every release PR stalled
+    # until someone ran `@mergifyio queue` by hand (PRs #673, #688, #689, #693).
+    # The `label = autorelease: pending` condition (applied only by
+    # release-please for releases it has actually staged) keeps this scoped to
+    # release PRs even with the broader github-actions author.
     # This rule intentionally does NOT require any of the run-by-default
     # checks (CI results (required) / Lint & Format / build + test + clippy + fmt).
     # The repo has GitHub Actions "Require approval for first-time contributors"
@@ -111,7 +116,7 @@ pull_request_rules:
     # `-conflict` + `-closed` is sufficient to prevent a broken bot cut.
     - name: Auto-merge release-please PRs
       conditions:
-          - author = release-please[bot]
+          - author = github-actions[bot]
           - "label = autorelease: pending"
           - -conflict
           - -closed

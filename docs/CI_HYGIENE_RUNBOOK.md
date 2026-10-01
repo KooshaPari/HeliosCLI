@@ -303,6 +303,24 @@ cannot cover jobs where no steps execute.
   until `4aa2b40d6` (2026-10-01). The rest of the workflow-permissions /
   action-pinning audit (8 workflows with no `permissions:` block, floating action
   tags, vendored codex issue-workflows with latent 403s) is tracked in **#692**.
+- **`gh run list --commit <sha>` needs the FULL 40-char SHA** — short SHAs
+  (even 9-10 chars) silently return an empty list, indistinguishable from "no
+  runs exist". Resolve first with `git rev-parse <short>` (bit this session
+  twice on 2026-10-01 while diagnosing the queue).
+- **Release PRs never matched `Auto-merge release-please PRs` on author** —
+  release-please runs _as a workflow_, so GitHub records the PR author as
+  `github-actions[bot]`, not `release-please[bot]`; the rule was dead and every
+  release PR (#673, #688, #689, #693) stalled until someone ran `@mergifyio
+refresh` + `@mergifyio queue` by hand. The queue path merges via the
+  `default` queue rule whose `required_conditions` is empty, so it bypasses
+  BOTH the approval-gated `action_required` runs and every `check-success=`
+  condition. Condition fixed in `.mergify.yml` on 2026-10-01 (scoped by
+  `label = autorelease: pending`, which only release-please applies).
+- **Hosted-runner starvation (2026-10-01): runs sat `queued`/`pending` with
+  zero jobs for 25+ min while githubstatus.com reported operational.**
+  Mitigation: cancel runs on superseded SHAs (`gh run cancel <id>`) so the
+  current head's runs — especially `Release Please`, which cuts the release —
+  get dispatch slots instead of sitting behind four 20-40 min `rust-ci-full`s.
 - **Unresolved bot review threads block release PRs** — branch protection
   (`#review-threads-unresolved = 0`) flips the PR to `BLOCKED` and Mergify
   waits forever at "queue conditions". Reply + GraphQL `resolveReviewThread`,
