@@ -5,6 +5,13 @@ All notable changes to **HeliosCLI** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.3](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.2...v0.11.3) (2026-09-29)
+
+
+### Bug Fixes
+
+* **ci:** grant issues:write to codex-upstream-sync (403'd on 6 straight weekly runs) ([7f93fed](https://github.com/KooshaPari/HeliosCLI/commit/7f93fed2585d614b59ecb421fc5807cc9955f8d8))
+
 ## [0.11.2](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.1...v0.11.2) (2026-09-27)
 
 
