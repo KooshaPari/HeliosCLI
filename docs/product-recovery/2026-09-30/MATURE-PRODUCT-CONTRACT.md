@@ -86,3 +86,22 @@ HeliosCLI is the Codex-lineage coding-agent client/reference runtime over the ca
 
 ## Architecture-dependent obligations
 Backend selection (Codex core/App Server, jcode, shared runtime, durable engine) remains open where experiments/SOTA are required. The behavior contract above survives backend choice.
+
+## Mature-contract strengthening — 2026-10-01
+
+### Shared harness invariants
+- WorkerAttempt, Session, DurableEffort and ProductState are distinct lifetimes.
+- Message/EventProjection and Artifact are distinct; streams are not sole durable truth.
+- Checkpoint and Evidence are distinct; resumability is not acceptance.
+- WorkGraph and SchedulerLease are distinct; graph topology does not imply resource placement.
+- Tool result and external Effect confirmation are distinct; UNCERTAIN effects reconcile before retry.
+- client state cannot authorize product state transitions without a versioned authority-bearing command/policy decision.
+
+### Scaling
+The same semantic identities must support local ephemeral execution and fleet execution. Distributed scheduling may use Ray-like, Kubernetes-like or custom substrates, but CPU/GPU/RAM/VRAM/provider/tool quotas, locality, priority, deadline, fairness, preemption and backpressure are explicit scheduler inputs.
+
+### Durable execution
+Durability is a replaceable port. A local event log/checkpoint store, Temporal, Durable Task or another backend may satisfy it only by passing the same crash/replay/external-effect/HITL conformance suite.
+
+### Generic-workload requirement
+The mature contract must close at least one non-coding research/operations journey. A contract that only explains repository edits is incomplete.
