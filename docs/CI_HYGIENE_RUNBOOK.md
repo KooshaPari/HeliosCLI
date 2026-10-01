@@ -298,6 +298,11 @@ cannot cover jobs where no steps execute.
   consecutive weekly runs (2026-08-24 → 09-28)** before `issues: write` was
   added (2026-09-29). When a scheduled workflow starts failing, diff its
   `permissions:` against what its steps actually call.
+- **`actions/attest-build-provenance` needs `attestations: write` + `id-token: write`**
+  — not just `id-token`. `rust-release.yml`'s attest job was missing the former
+  until `4aa2b40d6` (2026-10-01). The rest of the workflow-permissions /
+  action-pinning audit (8 workflows with no `permissions:` block, floating action
+  tags, vendored codex issue-workflows with latent 403s) is tracked in **#692**.
 - **Unresolved bot review threads block release PRs** — branch protection
   (`#review-threads-unresolved = 0`) flips the PR to `BLOCKED` and Mergify
   waits forever at "queue conditions". Reply + GraphQL `resolveReviewThread`,
