@@ -375,3 +375,35 @@ Proper fixes = product portability work (Windows fallback for the descriptor-saf
 write; security trade-off — it exists to prevent symlink TOCTOU) + test
 parametrization/skips. Both are frozen-repo product decisions: run harness tests
 on POSIX, or expect exactly these 8 on Windows.
+
+## 11. Dependabot security alerts (pnpm overrides ledger)
+
+**Pattern (verified 2026-10-01, `0122aced9`):** when npm transitive-dep
+alerts pile up (9 open: 4 high + 5 moderate - brace-expansion x6,
+ip-address x2, fast-uri x1), Dependabot does **not** open fix PRs: its
+security-update jobs all failed with `security_update_not_possible`
+(latest-resolvable == locked version, empty `conflicting-dependencies`).
+The fix mechanism is the `pnpm.overrides` security ledger in `package.json`.
+
+**Procedure:**
+
+1. List alerts: `gh api 'repos/KooshaPari/HeliosCLI/dependabot/alerts?state=open&per_page=50'`
+   (parse via `.ps1` + `ConvertFrom-Json`; cmd-embedded quote variants fail
+   silently).
+2. Bump the matching `pnpm.overrides` entries in `package.json`
+   (e.g. `brace-expansion@1` -> `^1.1.21`, `ip-address@<=10.7.0:^10.7.1`).
+3. Resolve: `npx -y pnpm@10.29.3 install --lockfile-only` (local corepack
+   `pnpm` shim is broken - pin to the `packageManager` version).
+4. Prove sync: re-run the same command with `--frozen-lockfile` (exit 0 =
+   package.json <-> lockfile consistent).
+5. Prettier: `pnpm-lock.yaml` is `.prettierignore`d - only `package.json`
+   needs a `prettier@3.6.2 --check` pass.
+6. Push -> dependency graph re-scan closes the alerts as `fixed` within ~1
+   minute (observed: 9/9 `state=fixed` 60 s after push; the "N
+   vulnerabilities" line in push output is pre-scan and clears on re-scan).
+
+**`minimumReleaseAge: 10080` (7-day quarantine) in `pnpm-workspace.yaml`
+did not block this:** the override-pinned fresh patches (published ~2 days
+earlier) resolved into the lockfile normally - quarantine gates Dependabot's
+own version discovery, not pinned override resolution (observed, do not
+assume for non-override bumps).
