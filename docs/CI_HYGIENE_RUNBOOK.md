@@ -343,7 +343,7 @@ refresh` + `@mergifyio queue` by hand. The queue path merges via the
   yields `git diff origin/main` == empty, the PR is already fully incorporated
   — close it rather than merge a no-op (see #682, #683 on 2026-09-24).
 - **Job-level `continue-on-error: true`** required for runner allocation failures (per-step insufficient)
-- **release-please[bot] author** matches none of the standard Mergify rules — needs dedicated rule
+- **release-please PRs are authored by `github-actions[bot]`, not `release-please[bot]`** - release-please runs as a workflow; the bot only pushes commits. Mergify rule fixed `76d37f113` (was dead for every release ever).
 - **`SONAR_TOKEN` needed** to mark SonarCloud hotspots reviewed via API; UI review works without it. The
   secret exists but is a **1-char placeholder** (401) — replace, don't add;
   then use the `sonar-hotspot-manage` workflow
@@ -352,6 +352,19 @@ refresh` + `@mergifyio queue` by hand. The queue path merges via the
 - **`gh issue close --comment "..."`** works inline; no `--comment-file`
 - **`git diff origin/main...branch`** (3-dot) shows logical changes from merge-base
 - **`git diff origin/main..branch`** (2-dot) shows everything not in main; misleading when branch is drifted
+- **Push-to-main cancels the previous tip's in-flight runs** - workflows use concurrency
+  `cancel-in-progress` per ref: each new push concludes the prior tip's rust-ci/Trunk/etc.
+  as `cancelled` (NOT green). CI is only meaningful on the final pushed SHA - never
+  rapid-fire pushes expecting cumulative verification, and do not push while the final
+  tip's gates are running (2026-10-01: the whole 18:28-20:00 chain read `cancelled`; only
+  `abaa43a9` @ 18:13 was truly green).
+- **Account-wide Actions congestion** (status page green, repo runs starved): census
+  `gh repo list KooshaPari --limit 60` + per-repo `actions/runs` counts - observed 340
+  queued / 5 in_progress across 15 repos (Dependabot + scheduled waves). Other repos'
+  queues are not ours to cancel; wait it out with one watcher on the final tip.
+  `v8-canary` workflow_dispatch = fast scheduler canary.
+- **`gh run cancel` can silently no-op** - re-issue and re-verify status (two d014bc2d0
+  runs survived two cancel attempts on 2026-10-01).
 
 ---
 
