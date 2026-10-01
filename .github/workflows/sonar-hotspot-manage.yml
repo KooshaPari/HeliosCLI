@@ -21,6 +21,9 @@ on:
                 options:
                     - SAFE
                     - FALSE_POSITIVE
+permissions:
+    contents: read
+
 jobs:
     sonar:
         runs-on: ubuntu-latest
