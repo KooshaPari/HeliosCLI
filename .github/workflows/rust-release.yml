@@ -1238,6 +1238,7 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             id-token: write
+            attestations: write # required by actions/attest-build-provenance
             contents: read
         steps:
             - name: Download target artifacts
