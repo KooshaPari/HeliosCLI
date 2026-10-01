@@ -33,3 +33,16 @@ The active root `crates/helios/src/main.rs` mounts Run, Checkpoint, Rollback, St
 ## HC-F006 — historical prompt corpus is referenced but not co-located
 
 The propagated intent document binds 50 prompts, but the referenced `docs/curated-prompts/...` files are not present at the frozen HeliosCLI paths sampled. Recover them from PhenoRegistry/history/conversation sources rather than treating the intent file as self-contained evidence.
+
+
+## HC-F007 — Several headline harness crates are not mounted by the active helios binary
+
+`crates/helios/Cargo.toml` directly depends on harness_queue, harness_runner, harness_rollback, harness_checkpoint, harness_spec, harness_verify, helios_config, recorder, AI/tools/sandbox. It does **not** depend on harness_orchestrator, harness_scaling or harness_interfaces.
+
+Therefore the repository's architecture diagram describes workspace inventory, not a single integrated runtime. Orchestrator/scaling/interfaces receive no mounted-product credit until an actual caller/consumer is traced. This is particularly important because the current orchestrator is prototype semantics.
+
+## HC-F008 — Active upstream velocity is an architectural requirement
+
+Contemporary baselines are now frozen outside this repo: Codex `60947e2341...` (2026-09-30) and jcode `5f1c091cf7...` (2026-10-01). Both moved recently. HeliosCLI's own architecture says its Codex hard fork was severed 2026-06-30.
+
+A mature HeliosCLI design must therefore treat upstream synchronization/contribution/extension strategy as a first-class lifecycle requirement. A deep fork is not neutral; it continuously converts upstream product/security/runtime evolution into integration debt.
