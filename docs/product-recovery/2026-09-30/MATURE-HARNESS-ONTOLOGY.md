@@ -98,3 +98,36 @@ Clients may vary presentation, interaction density, local shortcuts and projecti
 10. Offline/local single-process ephemeral chat.
 
 Any workload requiring an unexplained identity/lifetime/state object reopens the ontology.
+
+
+## Adversarial-review additions — 2026-10-01
+
+### CommandIntent
+Immutable normalized requested action between client/model/workflow request and execution. Carries command_id, subject, capability/version, normalized arguments digest, target scope, requesting actor/effort, authorization requirement and creation ordering metadata. Approval binds CommandIntent digest; mutation after approval creates a new command.
+
+### CapabilitySnapshot
+Versioned negotiated view of provider/model/tool/client/runtime capabilities and limits used for an attempt/turn. Evidence binds the snapshot so silent capability drift cannot reuse old greens.
+
+### Principal / Tenant
+Authority/resource owner identity for users, services, agents and organizations. Used by policy, secret custody, quotas/fairness, workspace ownership and audit. AgentDefinition is not automatically a Principal.
+
+### StoreTrust
+Durable stores declare integrity/authenticity/confidentiality/version guarantees. Loading untrusted/tampered checkpoints or evidence is not equivalent to recovery.
+
+### Ordering
+Every durable transition carries a logical sequence/revision within its authoritative aggregate; distributed event projections may additionally carry causal/correlation IDs. Wall-clock timestamp is observational metadata, not sole ordering authority.
+
+### RetentionPolicy
+Artifacts, traces, evidence, sessions and durable efforts declare retention/redaction/deletion/legal-hold semantics. Deletion is an authority-bearing lifecycle action and cannot silently erase evidence needed by an active acceptance claim.
+
+### SchemaVersion / Migration
+Every durable aggregate/protocol has schema/version identity and explicit forward/backward compatibility, migration, rollback and unsupported-state behavior.
+
+## Additional non-equivalences
+CommandIntent != Effect.
+Approval != CommandIntent.
+Principal != AgentDefinition.
+Timestamp != ordering authority.
+Stored bytes != trusted state.
+Protocol compatibility != semantic capability compatibility.
+Deletion != absence.
