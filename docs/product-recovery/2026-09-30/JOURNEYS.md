@@ -30,3 +30,15 @@ MVP: add J-HC-03/J-HC-05 and supported provider/tool breadth.
 Beta: add J-HC-04/J-HC-06/J-HC-08 with reliability/performance gates.
 GA: all required journeys close under release/security/upgrade/compatibility evidence.
 Mature: generic harness interoperability and high-scale QoS proven; clients remain replaceable.
+
+
+## Additional falsification journeys
+
+### J-HC-09 Fleet pressure
+Many durable efforts compete for CPU/GPU/RAM/provider/tool capacity. Scheduler placement/backpressure/fairness changes without changing effort/session/effect identities. Worker loss does not imply effort loss.
+
+### J-HC-10 Generic research/operations
+A non-coding agent gathers external evidence, produces cited artifacts, delegates independent review, waits for external input and resumes. No repository/worktree assumption is required by the harness ontology.
+
+## Closure rule
+A journey is CLOSED only when its actual entrypoint is mounted and the required identity/state, authorization, positive/negative behavior, restart/recovery, evidence, grader, projection and release configuration are verified. A source file, unit test or scaffold does not close a journey.
