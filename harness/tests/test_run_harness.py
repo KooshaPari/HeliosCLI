@@ -35,6 +35,11 @@ def _initialize_git_repo(repo: Path) -> None:
     subprocess.run(["git", "-C", str(repo), "commit", "-qm", "test fixture"], check=True)
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX-only: run-harness.py:123 os.open(workspace, O_RDONLY|O_DIRECTORY|O_NOFOLLOW) "
+    "opens a directory handle -> PermissionError [Errno 13] on Windows",
+)
 def test_validated_output_path_rejects_workspace_escape(tmp_path, monkeypatch):
     # Traces to: FR-HELIOS-IO-006 (bounded evidence output).
     monkeypatch.chdir(tmp_path)
@@ -52,6 +57,11 @@ def test_validated_output_path_rejects_workspace_escape(tmp_path, monkeypatch):
         write_output("link/run.json", "{}")
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX-only: run-harness.py:123 descriptor-safe write uses "
+    "os.open(workspace, O_RDONLY|O_DIRECTORY|O_NOFOLLOW) -> Errno 13 on Windows",
+)
 def test_write_output_uses_descriptor_safe_write(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     write_output = _legacy_module()._write_output
@@ -66,6 +76,11 @@ def test_write_output_uses_descriptor_safe_write(tmp_path, monkeypatch):
     assert (tmp_path / "artifacts" / "run.json").read_text() == "{}"
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX-only: run-harness.py subprocess hits os.open(dir) at line 123 "
+    "-> PermissionError [Errno 13] -> exit 1 on Windows",
+)
 def test_harness_dry_run_and_plan_hash(tmp_path):
     # Traces to: FR-HELIOS-IO-006 (strict dry-run envelope).
     repo = tmp_path / "repo"
@@ -116,6 +131,10 @@ def test_harness_dry_run_and_plan_hash(tmp_path):
     assert output["plan_hash"]
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason='POSIX-only: fixture path contains " which is illegal on NTFS -> OSError WinError 123 on Windows',
+)
 def test_phase2_skip_marker_escapes_repo_name(tmp_path):
     # Traces to: FR-HELIOS-IO-006 (valid bounded evidence artifacts).
     root = tmp_path / "root"
@@ -138,6 +157,11 @@ def test_phase2_skip_marker_escapes_repo_name(tmp_path):
     assert payload == {"repo_name": 'bad"name', "status": "skipped"}
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX-only: run-harness.py subprocess hits os.open(dir) at line 123 "
+    "-> PermissionError [Errno 13] -> exit 1 on Windows",
+)
 def test_harness_replay_and_validate(tmp_path):
     # Traces to: FR-HELIOS-IO-006 (deterministic replay evidence).
     repo = tmp_path / "repo"
@@ -202,6 +226,11 @@ def test_harness_replay_and_validate(tmp_path):
     )
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX-only: run-harness.py subprocess hits os.open(dir) at line 123 "
+    "-> PermissionError [Errno 13] -> exit 1 on Windows",
+)
 def test_replay_uses_stored_plan_hash_when_plan_details_are_absent(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()

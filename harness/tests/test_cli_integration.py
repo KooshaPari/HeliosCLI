@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def test_execute_phase_2_harness_script_smoke(tmp_path: Path) -> None:
     # Traces to: FR-HELIOS-IO-006 (explicit non-Git provenance handling).
@@ -56,6 +58,11 @@ def test_execute_phase_2_harness_script_smoke(tmp_path: Path) -> None:
     assert "toyrepo" in matrix_text
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX-only: invokes bash with Windows paths - backslashes eaten as "
+    "escapes -> file-not-found (127)",
+)
 def test_phase_2_wrapper_uses_configured_root_and_discards_stale_outputs(
     tmp_path: Path,
 ) -> None:

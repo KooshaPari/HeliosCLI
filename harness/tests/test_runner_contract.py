@@ -1,3 +1,6 @@
+import sys
+
+import pytest
 from harness.interfaces import CanonicalCommand, EvidenceBucket
 from harness.runner import Runner, RunnerConfig
 
@@ -11,6 +14,11 @@ def test_runner_writes_logs(tmp_path):
     assert r[0].stdout_file
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX-only: runs `sleep 2` and expects GNU timeout exit 124 "
+    "(Windows shell returns 127: command not found)",
+)
 def test_runner_retries_and_timeout(tmp_path):
     command = CanonicalCommand(command="sleep 2", bucket=EvidenceBucket.RUNTIME, cwd=".")
     runner = Runner(RunnerConfig(timeout_seconds=1, retries=1, retry_delay_seconds=0))
