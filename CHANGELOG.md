@@ -5,6 +5,14 @@ All notable changes to **HeliosCLI** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.5](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.4...v0.11.5) (2026-10-01)
+
+
+### Bug Fixes
+
+* **deps:** security bumps for 9 open Dependabot alerts ([#124](https://github.com/KooshaPari/HeliosCLI/issues/124)-[#132](https://github.com/KooshaPari/HeliosCLI/issues/132)) ([0122ace](https://github.com/KooshaPari/HeliosCLI/commit/0122aced97c9cbd6d1547df722eff1837e17645c))
+* **mergify:** release-please PRs are authored by github-actions[bot] ([76d37f1](https://github.com/KooshaPari/HeliosCLI/commit/76d37f1132f241c3b0418b86a2efeabbec35331e))
+
 ## [0.11.4](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.3...v0.11.4) (2026-10-01)
 
 
