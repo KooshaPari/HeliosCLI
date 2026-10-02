@@ -50,6 +50,8 @@ concurrency:
     group: concurrency-group::${{ github.workflow }}::${{ github.event.pull_request.number > 0 && format('pr-{0}', github.event.pull_request.number) || github.ref_name }}${{ github.ref_name == 'main' && format('::{0}', github.run_id) || ''}}
     cancel-in-progress: ${{ github.ref_name != 'main' }}
 
+permissions:
+  contents: read
 jobs:
     test:
         # Hard-fork: disabled until BuildBuddy/self-hosted Bazel runners are wired.

@@ -2,6 +2,8 @@ name: Benchmarks
 on:  
   push:  
     branches: [main]  
+permissions:
+  contents: read
 jobs:  
   bench:  
     runs-on: ubuntu-latest  

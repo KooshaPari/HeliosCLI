@@ -13,6 +13,8 @@ env:
     # better network/proxy behavior and matches Cargo's own suggested fallback.
     CARGO_NET_GIT_FETCH_WITH_CLI: "true"
 
+permissions:
+  contents: read
 jobs:
     # --- CI that doesn't need specific targets ---------------------------------
     general:

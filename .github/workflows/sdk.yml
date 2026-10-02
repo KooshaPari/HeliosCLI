@@ -30,6 +30,8 @@ on:
             - ".github/workflows/sdk.yml"
     workflow_dispatch:
 
+permissions:
+  contents: read
 jobs:
     python-sdk:
         # Hard-fork: disabled (self-hosted *-runners labels unavailable).
