@@ -1252,7 +1252,7 @@ jobs:
                   path: dist
                   pattern: "{*-symbols,argument-comment-lint-*,python-runtime-wheel-*}"
             - name: Generate SLSA Build provenance
-              uses: actions/attest-build-provenance@v2.1.0
+              uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0
               with:
                   subject-path: "${{ github.workspace }}/dist/**"
 
