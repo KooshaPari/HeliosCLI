@@ -5,6 +5,13 @@ All notable changes to **HeliosCLI** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.6](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.5...v0.11.6) (2026-10-02)
+
+
+### Bug Fixes
+
+* **ci:** least-privilege permissions for 8 workflows ([#692](https://github.com/KooshaPari/HeliosCLI/issues/692)) ([e979e2a](https://github.com/KooshaPari/HeliosCLI/commit/e979e2aad5de1cae7cd14c91ac78ac1568705c7d))
+
 ## [0.11.5](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.4...v0.11.5) (2026-10-01)
 
 
