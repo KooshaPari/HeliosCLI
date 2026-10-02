@@ -13,5 +13,12 @@
     "harness_pyo3/PhenoShared integration is excluded/broken at frozen source",
     "current Codex upstream delta not yet mapped"
   ],
-  "next_bound": "Recover 50 bound prompts/history; map active root harness reachability; freeze current Codex upstream; audit Agentora/PhenoShared absorption; compare against KCode/jcode and sunset HeliosLite donor evidence."
+  "next_bound": "Recover bound intent; compare active root harness/client behavior against Codex@44dd77b7 and KCode/jcode@2df1f77e; audit Agentora/PhenoShared; run generic harness SOTA before architecture freeze.",
+  "external_baselines": {
+    "codex": {
+      "repository": "openai/codex",
+      "snapshot": "44dd77b71e88c78295736bffd3dc3b684c13be6d",
+      "frozen_at": "2026-10-02T20:19:28Z"
+    }
+  }
 }
