@@ -5,6 +5,13 @@ All notable changes to **HeliosCLI** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.8](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.7...v0.11.8) (2026-10-04)
+
+
+### Bug Fixes
+
+* **ci:** skip pull_request runs on release-please branch (zero-job merge race) ([8e3c0af](https://github.com/KooshaPari/HeliosCLI/commit/8e3c0af0b355ce0fc94064e0d0f495a5f125cfaa))
+
 ## [0.11.7](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.6...v0.11.7) (2026-10-02)
 
 
