@@ -5,7 +5,9 @@
 # Checks: build, test, clippy (-D warnings), fmt, cargo-deny.
 name: rust-ci
 on:
-    pull_request: {}
+    pull_request:
+        branches-ignore:
+            - release-please--branches--main
     push:
         branches: [main]
     workflow_dispatch:
@@ -24,6 +26,7 @@ env:
 jobs:
     workspace:
         name: build + test + clippy + fmt
+        if: github.event_name != 'pull_request' || github.head_ref != 'release-please--branches--main'
         runs-on: ubuntu-latest
         timeout-minutes: 30
         steps:
@@ -49,6 +52,7 @@ jobs:
 
     deny:
         name: cargo deny
+        if: github.event_name != 'pull_request' || github.head_ref != 'release-please--branches--main'
         runs-on: ubuntu-latest
         timeout-minutes: 10
         steps:
@@ -64,6 +68,7 @@ jobs:
 
     changed:
         name: Detect changed areas
+        if: github.event_name != 'pull_request' || github.head_ref != 'release-please--branches--main'
         runs-on: ubuntu-24.04
         outputs:
             argument_comment_lint: ${{ steps.detect.outputs.argument_comment_lint }}
@@ -302,7 +307,7 @@ jobs:
                 argument_comment_lint_package,
                 argument_comment_lint_prebuilt,
             ]
-        if: always()
+        if: always() && (github.event_name != 'pull_request' || github.head_ref != 'release-please--branches--main')
         runs-on: ubuntu-24.04
         steps:
             - name: Summarize

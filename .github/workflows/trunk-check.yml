@@ -28,6 +28,8 @@ name: Trunk Check
 
 on:
     pull_request:
+        branches-ignore:
+            - release-please--branches--main
     merge_group:
     push:
         branches: [main, develop]
@@ -44,6 +46,7 @@ permissions:
 jobs:
     trunk-check:
         name: Lint & Format
+        if: github.event_name != 'pull_request' || github.head_ref != 'release-please--branches--main'
         runs-on: ubuntu-latest
         timeout-minutes: 10
 

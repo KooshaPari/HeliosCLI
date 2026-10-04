@@ -1,6 +1,8 @@
 name: Trufflehog Secrets Scan
 on:
     pull_request:
+        branches-ignore:
+            - release-please--branches--main
     push:
         branches:
             - main
@@ -12,6 +14,7 @@ concurrency:
 jobs:
     trufflehog:
         name: TruffleHog secrets scan
+        if: github.event_name != 'pull_request' || github.head_ref != 'release-please--branches--main'
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
