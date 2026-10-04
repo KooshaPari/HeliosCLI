@@ -30,6 +30,9 @@ on:
     pull_request:
         branches-ignore:
             - release-please--branches--main
+        paths-ignore:
+            - .release-please-manifest.json
+            - CHANGELOG.md
     merge_group:
     push:
         branches: [main, develop]
