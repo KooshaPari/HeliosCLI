@@ -5,6 +5,13 @@ All notable changes to **HeliosCLI** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.10](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.9...v0.11.10) (2026-10-08)
+
+
+### Bug Fixes
+
+* **deps:** bump aws-smithy-json to 0.62.7 for GHSA-8ffr-xgwf-xj56 (alert [#133](https://github.com/KooshaPari/HeliosCLI/issues/133)) ([bd1656d](https://github.com/KooshaPari/HeliosCLI/commit/bd1656de65fe66b1f27b69c587d9a423a889aba8))
+
 ## [0.11.9](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.8...v0.11.9) (2026-10-04)
 
 
