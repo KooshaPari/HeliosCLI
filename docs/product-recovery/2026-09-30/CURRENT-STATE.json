@@ -1,0 +1,24 @@
+{
+  "program": "HARNESS-MATURE-20260929",
+  "product": "KooshaPari/HeliosCLI",
+  "source_snapshot": "2adc983bbb105546127250e688774338677ff43a",
+  "status": "BLOCKED_INCOMPLETE",
+  "specification_design_percent": null,
+  "mature_product_percent": null,
+  "source_denominator_closed": false,
+  "accepted_role": "active Codex-lineage primary; candidate canonical/converged CLI and harness donor",
+  "critical_findings": [
+    "intent/boundary docs are placeholders despite active repo",
+    "root harness workspace and vendored excluded Codex trees are semantically distinct",
+    "harness_pyo3/PhenoShared integration is excluded/broken at frozen source",
+    "current Codex upstream delta not yet mapped"
+  ],
+  "next_bound": "Recover bound intent; compare active root harness/client behavior against Codex@44dd77b7 and KCode/jcode@2df1f77e; audit Agentora/PhenoShared; run generic harness SOTA before architecture freeze.",
+  "external_baselines": {
+    "codex": {
+      "repository": "openai/codex",
+      "snapshot": "44dd77b71e88c78295736bffd3dc3b684c13be6d",
+      "frozen_at": "2026-10-02T20:19:28Z"
+    }
+  }
+}
