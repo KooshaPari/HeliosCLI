@@ -561,7 +561,47 @@ def _normalized_schema_bundle_text(schema_dir: Path) -> str:
     # Normalize the schema into something datamodel-code-generator can map to
     # stable class names instead of anonymous numbered helpers.
     _annotate_schema(schema)
+    # 0.81 keeps --use-title-as-name titles on inline single-value literals by
+    # emitting RootModel aliases. Those wrappers make discriminator fields
+    # compare unequal to their wire strings. Drop only those titles after
+    # annotation so object variants keep stable class names.
+    _drop_inline_literal_titles(schema)
     return json.dumps(schema, indent=2, sort_keys=True) + "\n"
+
+
+def _is_single_string_literal_schema(value: dict[str, Any]) -> bool:
+    """Return whether a schema is one string constant rather than an object or enum."""
+    if any(key in value for key in ("properties", "oneOf", "anyOf", "allOf", "$ref")):
+        return False
+    const = value.get("const")
+    if isinstance(const, str):
+        return True
+    enum = value.get("enum")
+    return isinstance(enum, list) and len(enum) == 1 and isinstance(enum[0], str)
+
+
+def _drop_inline_literal_titles(value: Any, *, definition: bool = False) -> None:
+    """Remove titles that 0.81 would promote from inline literals to RootModels."""
+    if isinstance(value, list):
+        for item in value:
+            _drop_inline_literal_titles(item)
+        return
+    if not isinstance(value, dict):
+        return
+
+    if (
+        not definition
+        and isinstance(value.get("title"), str)
+        and _is_single_string_literal_schema(value)
+    ):
+        value.pop("title", None)
+
+    for key, child in value.items():
+        if key in {"definitions", "$defs"} and isinstance(child, dict):
+            for item in child.values():
+                _drop_inline_literal_titles(item, definition=True)
+            continue
+        _drop_inline_literal_titles(child)
 
 
 def generate_v2_all(schema_dir: Path) -> None:
@@ -601,6 +641,9 @@ def generate_v2_all(schema_dir: Path) -> None:
                 "--use-annotated",
                 "--use-union-operator",
                 "--disable-timestamp",
+                # The SDK still supports Python 3.10. StrEnum is 3.11+ and is
+                # the generator default when the target is 3.11.
+                "--no-use-specialized-enum",
                 # Keep the generated file formatted deterministically so the
                 # checked-in artifact only changes when the schema does.
                 "--formatters",
@@ -623,16 +666,21 @@ def _require_nullable_chatgpt_account_email(out_path: Path) -> None:
         class_end = len(source)
 
     class_source = source[class_start:class_end]
-    nullable_with_default = "    email: str | None = None"
+    required_nullable = "    email: str | None\n"
+    nullable_with_default = "    email: str | None = None\n"
+    # datamodel-code-generator 0.81 already emits a required nullable email.
+    # Older generators emitted `= None`, which dropped the required constraint.
+    if required_nullable in class_source and nullable_with_default not in class_source:
+        if class_source.count(required_nullable) != 1:
+            raise RuntimeError(
+                "Generated ChatgptAccount email did not have the expected nullable shape"
+            )
+        return
     if class_source.count(nullable_with_default) != 1:
         raise RuntimeError(
             "Generated ChatgptAccount email did not have the expected nullable shape"
         )
-    class_source = class_source.replace(
-        nullable_with_default,
-        "    email: str | None",
-        1,
-    )
+    class_source = class_source.replace(nullable_with_default, required_nullable, 1)
     out_path.write_text(source[:class_start] + class_source + source[class_end:])
 
 

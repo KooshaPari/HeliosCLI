@@ -444,6 +444,62 @@ def test_generate_v2_all_uses_titles_for_generated_names() -> None:
     assert "--use-annotated" in source
     assert "--formatters" in source
     assert "ruff-format" in source
+    # StrEnum is 3.11-only; the package still declares Python 3.10.
+    assert "--no-use-specialized-enum" in source
+
+
+def test_inline_literal_titles_are_dropped_before_codegen() -> None:
+    """0.81 would turn these titles into RootModels and break string discriminators."""
+    script = _load_update_script_module()
+    schema = {
+        "definitions": {
+            "IdleThreadStatus": {
+                "title": "IdleThreadStatus",
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "title": "IdleThreadStatusType",
+                        "type": "string",
+                        "enum": ["idle"],
+                    }
+                },
+                "required": ["type"],
+            },
+            "ReasoningSummary": {
+                "oneOf": [
+                    {
+                        "title": "ReasoningSummaryValue",
+                        "type": "string",
+                        "enum": ["auto", "concise"],
+                    },
+                    {
+                        "title": "NoneReasoningSummary",
+                        "type": "string",
+                        "enum": ["none"],
+                    },
+                ]
+            },
+            "OnlyLiteral": {
+                "title": "OnlyLiteral",
+                "type": "string",
+                "enum": ["keep"],
+            },
+        }
+    }
+
+    script._annotate_schema(schema)
+    assert schema["definitions"]["ReasoningSummary"]["oneOf"][1]["title"] == "NoneReasoningSummary"
+
+    script._drop_inline_literal_titles(schema)
+
+    idle_type = schema["definitions"]["IdleThreadStatus"]["properties"]["type"]
+    none_branch = schema["definitions"]["ReasoningSummary"]["oneOf"][1]
+    value_branch = schema["definitions"]["ReasoningSummary"]["oneOf"][0]
+    assert "title" not in idle_type
+    assert "title" not in none_branch
+    assert value_branch["title"] == "ReasoningSummaryValue"
+    assert schema["definitions"]["IdleThreadStatus"]["title"] == "IdleThreadStatus"
+    assert schema["definitions"]["OnlyLiteral"]["title"] == "OnlyLiteral"
 
 
 def test_generated_chatgpt_account_email_is_required_nullable() -> None:
@@ -452,6 +508,8 @@ def test_generated_chatgpt_account_email_is_required_nullable() -> None:
     account = ChatgptAccount.model_validate({"email": None, "planType": "pro", "type": "chatgpt"})
     assert account.email is None
     assert ChatgptAccount.model_fields["email"].is_required()
+    # Titled literals must stay strings. 0.81 otherwise wraps them in RootModel.
+    assert account.type == "chatgpt"
 
     with pytest.raises(ValidationError):
         ChatgptAccount.model_validate({"planType": "pro", "type": "chatgpt"})
