@@ -5,6 +5,13 @@ All notable changes to **HeliosCLI** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.11](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.10...v0.11.11) (2026-10-17)
+
+
+### Bug Fixes
+
+* **deps:** bump quinn-proto 0.11.17→0.11.19, rustls 0.23.43→0.23.45 ([254e690](https://github.com/KooshaPari/HeliosCLI/commit/254e690952de9dcf83f41c505cd0567b196301f8))
+
 ## [0.11.10](https://github.com/KooshaPari/HeliosCLI/compare/v0.11.9...v0.11.10) (2026-10-08)
 
 
